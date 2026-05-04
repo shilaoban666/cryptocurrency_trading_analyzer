@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - changeSet:
+      id: "004-order-review-indicators"
+      author: okx-analyzer
+      comment: "order_review 表增加技术指标信号字段"
+      changes:
+        - addColumn:
+            tableName: order_review
+            columns:
+              - column:
+                  name: ema_signals
+                  type: text
+                  remarks: "EMA指标状态标签，逗号分隔"
+              - column:
+                  name: kdj_signals
+                  type: text
+                  remarks: "KDJ指标状态标签，逗号分隔"
+              - column:
+                  name: macd_signals
+                  type: text
+                  remarks: "MACD指标状态标签，逗号分隔"

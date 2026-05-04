@@ -1,0 +1,83 @@
+databaseChangeLog:
+  - changeSet:
+      id: "002-create-liquidation-record"
+      author: okx-analyzer
+      comment: "创建 liquidation_record 表（爆仓/强平记录，来自 OKX 账单）"
+      changes:
+        - createTable:
+            tableName: liquidation_record
+            remarks: "强平爆仓记录（从 OKX 账单 type=8 同步）"
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: bill_id
+                  type: varchar(64)
+                  remarks: "OKX 账单ID（唯一标识）"
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: inst_id
+                  type: varchar(32)
+                  remarks: "品种，如 BTC-USDT-SWAP"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: inst_type
+                  type: varchar(16)
+                  remarks: "SWAP/FUTURES"
+              - column:
+                  name: pos_side
+                  type: varchar(8)
+                  remarks: "long/short"
+              - column:
+                  name: pnl
+                  type: numeric(20,8)
+                  remarks: "强平实现盈亏（通常为负）"
+              - column:
+                  name: fee
+                  type: numeric(20,8)
+                  remarks: "强平手续费"
+              - column:
+                  name: sz
+                  type: numeric(20,8)
+                  remarks: "强平仓位大小"
+              - column:
+                  name: px
+                  type: numeric(20,8)
+                  remarks: "强平价格"
+              - column:
+                  name: balance_after
+                  type: numeric(20,8)
+                  remarks: "强平后账户余额"
+              - column:
+                  name: liquidation_time
+                  type: timestamp
+                  remarks: "强平时间（北京时间）"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: synced_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  remarks: "同步时间"
+
+        - createIndex:
+            tableName: liquidation_record
+            indexName: idx_liq_inst_id
+            columns:
+              - column:
+                  name: inst_id
+
+        - createIndex:
+            tableName: liquidation_record
+            indexName: idx_liq_time
+            columns:
+              - column:
+                  name: liquidation_time

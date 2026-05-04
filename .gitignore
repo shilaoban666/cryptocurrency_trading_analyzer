@@ -1,0 +1,37 @@
+# ── 敏感配置（含 API 密钥，绝不提交）
+backend/src/main/resources/application.yml
+backend/src/main/resources/application-*.yml
+!backend/src/main/resources/application.yml.example
+
+# ── Java / Maven
+target/
+*.class
+*.jar
+*.war
+*.ear
+.mvn/
+!.mvn/wrapper/maven-wrapper.jar
+!.mvn/wrapper/maven-wrapper.properties
+
+# ── Node / Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# ── IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+
+# ── OS
+.DS_Store
+Thumbs.db
+
+# ── Logs
+*.log
+logs/
+
+# ── Claude Code
+.claude/

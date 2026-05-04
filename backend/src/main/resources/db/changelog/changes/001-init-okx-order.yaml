@@ -1,0 +1,146 @@
+databaseChangeLog:
+  - changeSet:
+      id: "001-create-okx-order"
+      author: okx-analyzer
+      comment: "初始化 okx_order 表（合约历史订单）"
+      changes:
+        - createTable:
+            tableName: okx_order
+            remarks: "OKX 合约历史订单"
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: ord_id
+                  type: varchar(64)
+                  remarks: "OKX 订单ID"
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: inst_id
+                  type: varchar(32)
+                  remarks: "品种，如 BTC-USDT-SWAP"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: inst_type
+                  type: varchar(16)
+                  remarks: "SWAP/FUTURES"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: side
+                  type: varchar(8)
+                  remarks: "buy/sell"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: pos_side
+                  type: varchar(8)
+                  remarks: "long/short/net"
+              - column:
+                  name: ord_type
+                  type: varchar(16)
+                  remarks: "market/limit/liquidation 等"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: sz
+                  type: numeric(20,8)
+                  remarks: "委托数量"
+              - column:
+                  name: px
+                  type: numeric(20,8)
+                  remarks: "委托价格"
+              - column:
+                  name: avg_px
+                  type: numeric(20,8)
+                  remarks: "成交均价"
+              - column:
+                  name: fill_sz
+                  type: numeric(20,8)
+                  remarks: "成交数量"
+              - column:
+                  name: pnl
+                  type: numeric(20,8)
+                  defaultValueNumeric: 0
+                  remarks: "已实现盈亏（关仓单有值）"
+              - column:
+                  name: fee
+                  type: numeric(20,8)
+                  defaultValueNumeric: 0
+                  remarks: "手续费（负数）"
+              - column:
+                  name: lever
+                  type: varchar(8)
+                  remarks: "杠杆倍数"
+              - column:
+                  name: state
+                  type: varchar(16)
+                  remarks: "filled/canceled"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: create_time
+                  type: timestamp
+                  remarks: "开单时间（北京时间）"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: update_time
+                  type: timestamp
+                  remarks: "成交/更新时间"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: holding_minutes
+                  type: integer
+                  remarks: "持仓分钟数"
+              - column:
+                  name: is_win
+                  type: smallint
+                  remarks: "1=盈利 0=亏损 null=开仓单"
+              - column:
+                  name: is_liquidation
+                  type: smallint
+                  defaultValueNumeric: 0
+                  remarks: "1=强平单 0=普通单"
+              - column:
+                  name: synced_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  remarks: "同步时间"
+
+        - createIndex:
+            tableName: okx_order
+            indexName: idx_okx_order_inst_id
+            columns:
+              - column:
+                  name: inst_id
+
+        - createIndex:
+            tableName: okx_order
+            indexName: idx_okx_order_create_time
+            columns:
+              - column:
+                  name: create_time
+
+        - createIndex:
+            tableName: okx_order
+            indexName: idx_okx_order_pos_side
+            columns:
+              - column:
+                  name: pos_side
+
+        - createIndex:
+            tableName: okx_order
+            indexName: idx_okx_order_is_liquidation
+            columns:
+              - column:
+                  name: is_liquidation

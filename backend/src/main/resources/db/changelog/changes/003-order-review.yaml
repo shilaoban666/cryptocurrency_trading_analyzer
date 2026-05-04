@@ -1,0 +1,47 @@
+databaseChangeLog:
+  - changeSet:
+      id: "003-order-review"
+      author: okx-analyzer
+      comment: "创建 order_review 表（交易复盘记录）"
+      changes:
+        - createTable:
+            tableName: order_review
+            remarks: "每笔订单的复盘文本与原因标签"
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: ord_id
+                  type: varchar(64)
+                  remarks: "关联的 OKX 订单ID（唯一）"
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: review_text
+                  type: text
+                  remarks: "复盘段落文本"
+              - column:
+                  name: reasons
+                  type: text
+                  remarks: "原因标签，逗号分隔"
+              - column:
+                  name: created_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+
+        - createIndex:
+            tableName: order_review
+            indexName: idx_review_ord_id
+            columns:
+              - column:
+                  name: ord_id

@@ -1,0 +1,46 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/okx_analyzer
+    username: postgres
+    password: your_db_password
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+        default_schema: public
+
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    default-schema: public
+
+# OKX API 配置（官网 -> 个人中心 -> API 管理，权限：只读）
+okx:
+  api:
+    key: YOUR_OKX_API_KEY
+    secret: YOUR_OKX_SECRET
+    passphrase: YOUR_OKX_PASSPHRASE
+    base-url: https://www.okx.com
+    simulated: false           # true=模拟盘  false=实盘
+    # 国内访问 OKX 需配置本地代理（Clash/V2Ray 等），留空则不走代理
+    proxy-host: 127.0.0.1
+    proxy-port: 7890
+    history-months: 6
+
+logging:
+  level:
+    com.okx.analyzer: INFO
+    liquibase: WARN
+    org.hibernate.SQL: WARN
