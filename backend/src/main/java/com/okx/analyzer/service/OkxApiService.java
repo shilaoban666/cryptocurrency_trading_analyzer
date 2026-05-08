@@ -174,6 +174,16 @@ public class OkxApiService {
         return all;
     }
 
+    /** 获取交易账户余额（统一账户） */
+    public JsonNode fetchAccountBalance() {
+        return get("/api/v5/account/balance?ccy=USDT");
+    }
+
+    /** 获取资金账户余额 */
+    public JsonNode fetchAssetBalance() {
+        return get("/api/v5/asset/balances?ccy=USDT");
+    }
+
     /** 不需要签名的公开 API（行情数据） */
     public JsonNode getPublic(String requestPath) {
         validateBaseUrl();

@@ -20,6 +20,10 @@ public interface OkxOrderRepository extends JpaRepository<OkxOrder, Long> {
     @Query("SELECT o FROM OkxOrder o WHERE o.state = 'filled' AND o.isWin IS NOT NULL ORDER BY o.createTime ASC")
     List<OkxOrder> findAllClosedOrders();
 
+    /** 所有已成交订单，按时间排序，用于推算开仓到平仓的真实持仓时长 */
+    @Query("SELECT o FROM OkxOrder o WHERE o.state = 'filled' ORDER BY o.createTime ASC")
+    List<OkxOrder> findAllFilledOrders();
+
     /** 按时间范围查询关仓单 */
     @Query("SELECT o FROM OkxOrder o WHERE o.state = 'filled' AND o.isWin IS NOT NULL " +
            "AND o.createTime BETWEEN :start AND :end ORDER BY o.createTime ASC")

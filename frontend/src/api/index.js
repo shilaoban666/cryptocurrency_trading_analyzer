@@ -14,6 +14,9 @@ http.interceptors.response.use(
 export const syncOrders = (instType = 'all') =>
   http.post(`/sync/${instType}`)
 
+export const getBalance = () =>
+  http.get('/balance')
+
 export const getAnalysis = (params = {}) =>
   http.get('/analysis', { params })
 
@@ -43,6 +46,15 @@ export const saveReview = (ordId, body) =>
 
 export const getReviewStats = () =>
   http.get('/review/stats')
+
+export const getCurrentPositions = () =>
+  http.get('/positions/current')
+
+export const getPositionAiAnalysis = () =>
+  http.post('/positions/ai-analysis', {}, { timeout: 120000 })
+
+export const openPositionAiAnalysisStream = () =>
+  new EventSource('/api/positions/ai-analysis/stream')
 
 // ── OKX 公开市场数据（主力大户分析）──────────────────────────
 const okx = axios.create({ baseURL: '/okx', timeout: 30000 })

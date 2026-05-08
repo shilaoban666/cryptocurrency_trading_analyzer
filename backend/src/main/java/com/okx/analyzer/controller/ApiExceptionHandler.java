@@ -1,5 +1,6 @@
 package com.okx.analyzer.controller;
 
+import com.okx.analyzer.service.AiApiException;
 import com.okx.analyzer.service.OkxApiException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +23,21 @@ public class ApiExceptionHandler {
         }
         if (e.getOkxCode() != null) {
             body.put("okxCode", e.getOkxCode());
+        }
+        if (e.getStatusCode() != null) {
+            body.put("status", e.getStatusCode());
+        }
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(body);
+    }
+
+    @ExceptionHandler(AiApiException.class)
+    public ResponseEntity<Map<String, Object>> handleAiApiException(AiApiException e) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", false);
+        body.put("message", e.getMessage());
+        body.put("provider", e.getProvider());
+        if (e.getRequestPath() != null) {
+            body.put("path", e.getRequestPath());
         }
         if (e.getStatusCode() != null) {
             body.put("status", e.getStatusCode());
