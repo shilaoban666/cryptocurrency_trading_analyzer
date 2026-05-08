@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div>
     <div class="page-title">🔬 深度分析</div>
 
@@ -45,7 +45,19 @@
       <el-col :span="12"><div class="chart-card"><div class="card-title">📆 星期胜率分布</div><div ref="weekdayRef" style="height:260px" /></div></el-col>
       <el-col :span="12"><div class="chart-card"><div class="card-title">💵 星期总盈亏</div><div ref="weekdayPnlRef" style="height:260px" /></div></el-col>
     </el-row>
-    <div class="chart-card"><div class="card-title">🪙 品种盈亏 & 胜率对比</div><div ref="symbolRef" style="height:300px" /></div>
+    <div class="chart-card">
+      <div class="card-title">📋 扛单与止盈诊断</div>
+      <el-table :data="holdingDiagnostics" style="width:100%" size="small">
+        <el-table-column prop="metric" label="指标" min-width="150" />
+        <el-table-column prop="value" label="当前值" min-width="140" />
+        <el-table-column prop="judge" label="判断" min-width="140">
+          <template #default="{ row }">
+            <span :style="{ color: row.color }">{{ row.judge }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="note" label="说明" min-width="280" />
+      </el-table>
+    </div>
     <el-row :gutter="16">
       <el-col :span="12"><div class="chart-card"><div class="card-title">⏱ 持仓时间分布</div><div ref="holdingRef" style="height:260px" /></div></el-col>
       <el-col :span="12"><div class="chart-card"><div class="card-title">💰 盈亏金额分布</div><div ref="pnlDistRef" style="height:260px" /></div></el-col>
@@ -53,7 +65,21 @@
     <div class="chart-card"><div class="card-title">📉 资金曲线 & 最大回撤分析（双面板）</div><div ref="drawdownRef" style="height:380px" /></div>
     <el-row :gutter="16">
       <el-col :span="10"><div class="chart-card"><div class="card-title">⚙️ 杠杆胜率精细分析</div><div ref="leverageRef" style="height:280px" /></div></el-col>
-      <el-col :span="14"><div class="chart-card"><div class="card-title">🎯 品种综合散点（胜率 vs 总盈亏）</div><div ref="symbolScatterRef" style="height:280px" /></div></el-col>
+      <el-col :span="14">
+        <div class="chart-card">
+          <div class="card-title">📋 交易质量诊断</div>
+          <el-table :data="qualityDiagnostics" style="width:100%" size="small">
+            <el-table-column prop="metric" label="指标" min-width="150" />
+            <el-table-column prop="value" label="当前值" min-width="120" />
+            <el-table-column prop="judge" label="判断" min-width="120">
+              <template #default="{ row }">
+                <span :style="{ color: row.color }">{{ row.judge }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="note" label="说明" min-width="250" />
+          </el-table>
+        </div>
+      </el-col>
     </el-row>
     <div class="chart-card"><div class="card-title">📊 月度每单均盈亏 & 交易笔数趋势</div><div ref="monthlyDetailRef" style="height:260px" /></div>
   </div>
@@ -61,7 +87,6 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
-import * as echarts from 'echarts'
 import { getAnalysis } from '@/api'
 import { useTheme } from '@/composables/useTheme'
 
@@ -71,10 +96,10 @@ const data = ref({})
 const WEEKDAYS = ['周一','周二','周三','周四','周五','周六','周日']
 
 const heatmapRef    = ref(null); const hourlyRef    = ref(null); const hourlyPnlRef  = ref(null)
-const weekdayRef    = ref(null); const weekdayPnlRef= ref(null); const symbolRef     = ref(null)
+const weekdayRef    = ref(null); const weekdayPnlRef= ref(null)
 const holdingRef    = ref(null); const holdingCompRef= ref(null); const pnlDistRef    = ref(null)
 const rollingRef    = ref(null); const monthlyRef   = ref(null); const directionRef  = ref(null)
-const drawdownRef   = ref(null); const leverageRef  = ref(null); const symbolScatterRef = ref(null)
+const drawdownRef   = ref(null); const leverageRef  = ref(null)
 const monthlyDetailRef = ref(null)
 
 let charts = {}
@@ -109,10 +134,90 @@ const riskCards = computed(() => {
   ]
 })
 
+const holdingDiagnostics = computed(() => {
+  const d = data.value
+  const winHold = +d.avgWinHoldingMinutes || 0
+  const lossHold = +d.avgLossHoldingMinutes || 0
+  const ratio = winHold > 0 ? lossHold / winHold : 0
+  const avgWin = Math.abs(+d.avgWin || 0)
+  const avgLoss = Math.abs(+d.avgLoss || 0)
+  const rr = avgLoss > 0 ? avgWin / avgLoss : 0
+  return [
+    {
+      metric: '输赢持仓时长比',
+      value: ratio ? ratio.toFixed(2) + 'x' : '-',
+      judge: ratio >= 3 ? '明显扛单' : ratio >= 1.5 ? '有扛单倾向' : '相对健康',
+      color: ratio >= 3 ? '#f85149' : ratio >= 1.5 ? '#f0883e' : '#3fb950',
+      note: `赢单 ${fmtHolding(winHold)}，输单 ${fmtHolding(lossHold)}。输单时间越长，越像亏损后迟迟不止损。`
+    },
+    {
+      metric: '盈亏金额比',
+      value: rr ? rr.toFixed(2) : '-',
+      judge: rr < 1 ? '赚小亏大' : rr < 1.5 ? '一般' : '较好',
+      color: rr < 1 ? '#f85149' : rr < 1.5 ? '#f0883e' : '#3fb950',
+      note: '低于 1 代表平均盈利覆盖不了平均亏损，容易被少数大亏吃掉。'
+    },
+    {
+      metric: '最大单笔亏损',
+      value: fmt(d.maxLoss) + ' U',
+      judge: Math.abs(+d.maxLoss || 0) > avgWin * 2 ? '尾部亏损偏大' : '可控',
+      color: Math.abs(+d.maxLoss || 0) > avgWin * 2 ? '#f85149' : '#3fb950',
+      note: '如果最大亏损显著大于平均盈利，说明止损纪律需要更硬。'
+    },
+    {
+      metric: '持仓结论',
+      value: ratio >= 3 ? '亏损拖延' : '继续观察',
+      judge: ratio >= 3 && rr < 1 ? '高风险' : ratio >= 1.5 ? '中风险' : '低风险',
+      color: ratio >= 3 && rr < 1 ? '#f85149' : ratio >= 1.5 ? '#f0883e' : '#3fb950',
+      note: ratio >= 3 ? '输单持仓显著长于赢单，基本可以判断存在扛单或止损过慢。' : '单看时长还不能确认扛单，需要结合最大亏损和回撤。'
+    },
+  ]
+})
+
+const qualityDiagnostics = computed(() => {
+  const d = data.value
+  const winRate = +d.winRate || 0
+  const profitFactor = +d.profitFactor || 0
+  const drawdown = +d.maxDrawdownPct || 0
+  const expectancy = +d.expectedValue || 0
+  return [
+    {
+      metric: '胜率',
+      value: (winRate * 100).toFixed(1) + '%',
+      judge: winRate >= 0.5 ? '达标' : '偏低',
+      color: winRate >= 0.5 ? '#3fb950' : '#f85149',
+      note: '胜率不是单独目标，要和盈亏比一起看。'
+    },
+    {
+      metric: '盈亏因子',
+      value: profitFactor ? profitFactor.toFixed(2) : '-',
+      judge: profitFactor >= 1.5 ? '较好' : profitFactor >= 1 ? '勉强' : '危险',
+      color: profitFactor >= 1.5 ? '#3fb950' : profitFactor >= 1 ? '#f0883e' : '#f85149',
+      note: '低于 1 表示总盈利小于总亏损，策略整体不可持续。'
+    },
+    {
+      metric: '单笔期望',
+      value: fmt(expectancy) + ' U',
+      judge: expectancy > 0 ? '正期望' : '负期望',
+      color: expectancy > 0 ? '#3fb950' : '#f85149',
+      note: '正期望说明长期还有边际，但仍要控制尾部亏损。'
+    },
+    {
+      metric: '最大回撤',
+      value: drawdown.toFixed(1) + '%',
+      judge: drawdown <= 20 ? '可控' : drawdown <= 40 ? '偏高' : '过高',
+      color: drawdown <= 20 ? '#3fb950' : drawdown <= 40 ? '#f0883e' : '#f85149',
+      note: '回撤过高通常来自扛单、加仓摊平或止损不一致。'
+    },
+  ]
+})
+
 function fmt(v) { return v != null ? (+v).toFixed(2) : '-' }
 function fmtHolding(min) {
-  if (!min) return '-'
-  return min < 60 ? min.toFixed(0) + ' 分钟' : (min / 60).toFixed(1) + ' 小时'
+  if (min == null) return '暂无'
+  const n = +min
+  if (!Number.isFinite(n)) return '暂无'
+  return n < 60 ? n.toFixed(0) + ' 分钟' : (n / 60).toFixed(1) + ' 小时'
 }
 
 function ic(key, elRef) {
@@ -129,8 +234,8 @@ async function load() {
 function renderAll() {
   renderDirection(); renderHoldingComp(); renderRolling(); renderMonthly()
   renderHeatmap(); renderHourly(); renderHourlyPnl(); renderWeekday()
-  renderWeekdayPnl(); renderSymbol(); renderHolding(); renderPnlDist()
-  renderDrawdown(); renderLeverage(); renderSymbolScatter(); renderMonthlyDetail()
+  renderWeekdayPnl(); renderHolding(); renderPnlDist()
+  renderDrawdown(); renderLeverage(); renderMonthlyDetail()
 }
 
 function renderDirection() {
@@ -180,9 +285,9 @@ function renderHoldingComp() {
 function renderRolling() {
   const c = ic('rolling', rollingRef)
   const d = data.value
-  const rates = (d.rollingWinRate || []).map(v => (v * 100).toFixed(1))
+  const rates = (d.rollingWinRate || []).map(v => +(v * 100).toFixed(1))
   c.setOption({
-    tooltip: { trigger: 'axis', formatter: p => `第 ${p[0].name} 单<br/>近20单胜率: ${p[0].value}%` },
+    tooltip: { trigger: 'axis', formatter: p => `第 ${p[0].name} 单<br/>近 20 单胜率: ${p[0].value}%` },
     grid: { left: 50, right: 20, top: 20, bottom: 30 },
     xAxis: { type: 'category', data: d.rollingIndex || [], axisLabel: { fontSize: 10 } },
     yAxis: { type: 'value', min: 0, max: 100, axisLabel: { formatter: v => v + '%' } },
@@ -305,30 +410,6 @@ function renderWeekdayPnl() {
   })
 }
 
-function renderSymbol() {
-  const c = ic('symbol', symbolRef)
-  const d = data.value
-  const syms = d.symbolNames || []
-  c.setOption({
-    tooltip: { trigger:'axis' },
-    legend: { top:0, textStyle:{ color: cs.value.legendColor } },
-    grid: { left:80, right:60, top:30, bottom:40 },
-    xAxis: { type:'category', data: syms, axisLabel:{ rotate:30, fontSize:10 } },
-    yAxis: [
-      { type:'value', name:'盈亏(U)', axisLabel:{ formatter:v=>v+'U' } },
-      { type:'value', name:'胜率',   max:100, axisLabel:{ formatter:v=>v+'%' } }
-    ],
-    series: [
-      { name:'总盈亏', type:'bar', data: d.symbolTotalPnl,
-        itemStyle:{ color: p => (d.symbolTotalPnl||[])[p.dataIndex] >= 0 ? '#3fb950' : '#f85149', borderRadius:[4,4,0,0] },
-        barMaxWidth:30 },
-      { name:'胜率', type:'line', yAxisIndex:1, smooth:true, symbol:'circle', symbolSize:8,
-        data: (d.symbolWinRate||[]).map(v=>(v*100).toFixed(1)),
-        lineStyle:{ color:'#f0883e' }, itemStyle:{ color:'#f0883e' } }
-    ]
-  })
-}
-
 function renderHolding() {
   const c = ic('holding', holdingRef)
   const d = data.value
@@ -419,33 +500,6 @@ function renderLeverage() {
       markLine:{ silent:true,
         data:[{ yAxis:50, lineStyle:{ color:'#f0883e', type:'dashed', width:2 } }],
         label:{ formatter:'盈亏平衡线 50%', color:'#f0883e', fontSize:10 } }
-    }]
-  })
-}
-
-function renderSymbolScatter() {
-  const c = ic('symbolScatter', symbolScatterRef)
-  const d     = data.value
-  const names = d.symbolNames    || []
-  const pnls  = d.symbolTotalPnl || []
-  const rates = d.symbolWinRate  || []
-  const scData = names.map((name, i) => ({
-    name,
-    value: [+(rates[i] * 100).toFixed(1), +pnls[i].toFixed(2)],
-    itemStyle:{ color: pnls[i] >= 0 ? '#3fb950' : '#f85149' }
-  }))
-  c.setOption({
-    tooltip: { formatter: p => `<b>${p.name}</b><br/>胜率: ${p.value[0]}%<br/>总盈亏: ${p.value[1]} U` },
-    grid:    { left:72, right:40, top:20, bottom:40 },
-    xAxis:   { type:'value', name:'胜率(%)', min:0, max:100, axisLabel:{ formatter:v => v + '%' } },
-    yAxis:   { type:'value', name:'盈亏(U)',  axisLabel:{ formatter:v => v + 'U' } },
-    series:  [{ type:'scatter', data:scData, symbolSize:18,
-      label:{ show:true, formatter:p => p.name, position:'right', color: cs.value.labelColor, fontSize:10 },
-      markLine:{ silent:true,
-        data:[
-          { xAxis:50, lineStyle:{ color:'rgba(248,81,73,0.35)', type:'dashed' } },
-          { yAxis:0,  lineStyle:{ color:'rgba(248,81,73,0.35)', type:'dashed' } }
-        ], label:{ show:false } }
     }]
   })
 }

@@ -8,6 +8,7 @@ import com.okx.analyzer.repository.OkxOrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.temporal.ChronoUnit;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -31,6 +32,8 @@ public class AnalysisService {
                 : orderRepo.findAllClosedOrders();
 
         if (orders.isEmpty()) return AnalysisDto.builder().build();
+
+        backfillHoldingMinutes(orders);
 
         // 基础统计
         long   total      = orders.size();
@@ -155,9 +158,9 @@ public class AnalysisService {
     }
 
     private double avgHolding(List<OkxOrder> orders, Integer win) {
-        Stream<OkxOrder> s = orders.stream().filter(o->o.getHoldingMinutes()!=null);
+        Stream<OkxOrder> s = orders.stream().filter(o->holdingMinutes(o)!=null);
         if (win != null) s = s.filter(o->Objects.equals(o.getIsWin(),win));
-        return r2(s.mapToInt(OkxOrder::getHoldingMinutes).average().orElse(0));
+        return r2(s.mapToInt(o->holdingMinutes(o)).average().orElse(0));
     }
 
     // ── 进阶指标 ──────────────────────────────────────────────────────────
@@ -239,19 +242,20 @@ public class AnalysisService {
     // ── 滚动胜率 ──────────────────────────────────────────────────────────
 
     private List<Double> rollingWinRate(List<OkxOrder> orders, int window) {
-        if(orders.size()<window)return List.of();
         List<Double> res=new ArrayList<>();
-        for(int i=window;i<=orders.size();i++){
-            List<OkxOrder> sl=orders.subList(i-window,i);
+        if (orders.isEmpty()) return res;
+        for(int i=1;i<=orders.size();i++){
+            int start = Math.max(0, i-window);
+            List<OkxOrder> sl=orders.subList(start,i);
             long w=sl.stream().filter(o->o.getIsWin()!=null&&o.getIsWin()==1).count();
-            res.add(r2((double)w/window));
+            res.add(r2((double)w/sl.size()));
         }
         return res;
     }
 
     private List<Integer> rollingIndex(List<OkxOrder> orders, int window) {
         List<Integer> res=new ArrayList<>();
-        for(int i=window;i<=orders.size();i++)res.add(i);
+        for(int i=1;i<=orders.size();i++)res.add(i);
         return res;
     }
 
@@ -333,7 +337,7 @@ public class AnalysisService {
     private List<Double> symbolAvgHolding(List<OkxOrder> orders) {
         Map<String,List<OkxOrder>> byS=orders.stream().collect(Collectors.groupingBy(OkxOrder::getInstId));
         return symbolNames(orders).stream().map(s->r2(byS.get(s).stream()
-                .filter(o->o.getHoldingMinutes()!=null).mapToInt(OkxOrder::getHoldingMinutes).average().orElse(0))).toList();
+                .filter(o->holdingMinutes(o)!=null).mapToInt(o->holdingMinutes(o)).average().orElse(0))).toList();
     }
 
     // ── 持仓时间 & 盈亏分布 ───────────────────────────────────────────────
@@ -343,12 +347,12 @@ public class AnalysisService {
 
     private List<Integer> holdingCounts(List<OkxOrder> orders) {
         return Arrays.stream(HOLDING_BUCKETS).map(b->(int)orders.stream()
-                .filter(o->o.getHoldingMinutes()!=null&&o.getHoldingMinutes()>=b[0]&&o.getHoldingMinutes()<b[1]).count()).toList();
+                .filter(o->holdingMinutes(o)!=null&&holdingMinutes(o)>=b[0]&&holdingMinutes(o)<b[1]).count()).toList();
     }
 
     private List<Double> holdingWinRates(List<OkxOrder> orders) {
         return Arrays.stream(HOLDING_BUCKETS).map(b->{
-            List<OkxOrder> bkt=orders.stream().filter(o->o.getHoldingMinutes()!=null&&o.getHoldingMinutes()>=b[0]&&o.getHoldingMinutes()<b[1]).toList();
+            List<OkxOrder> bkt=orders.stream().filter(o->holdingMinutes(o)!=null&&holdingMinutes(o)>=b[0]&&holdingMinutes(o)<b[1]).toList();
             if(bkt.isEmpty())return 0.0;
             long w=bkt.stream().filter(o->o.getIsWin()!=null&&o.getIsWin()==1).count();
             return r2((double)w/bkt.size());
@@ -412,4 +416,83 @@ public class AnalysisService {
 
     private double d(java.math.BigDecimal v) { return v==null?0.0:v.doubleValue(); }
     private double r2(double v) { return Math.round(v*100.0)/100.0; }
+
+    private Integer holdingMinutes(OkxOrder order) {
+        if (order.getHoldingMinutes() != null && order.getHoldingMinutes() >= 0) {
+            return order.getHoldingMinutes();
+        }
+        if (order.getCreateTime() == null || order.getUpdateTime() == null) {
+            return null;
+        }
+        long seconds = ChronoUnit.SECONDS.between(order.getCreateTime(), order.getUpdateTime());
+        if (seconds <= 0) {
+            return 1;
+        }
+        long minutes = (long) Math.ceil(seconds / 60.0);
+        if (minutes > Integer.MAX_VALUE) {
+            return null;
+        }
+        return (int) minutes;
+    }
+    private void backfillHoldingMinutes(List<OkxOrder> closedOrders) {
+        List<OkxOrder> timeline = orderRepo.findAllFilledOrders();
+        if (timeline.isEmpty()) {
+            return;
+        }
+
+        Map<Long, OkxOrder> closedById = closedOrders.stream()
+                .filter(o -> o.getId() != null)
+                .collect(Collectors.toMap(OkxOrder::getId, o -> o, (a, b) -> a));
+
+        Map<String, OkxOrder> latestOpenByKey = new HashMap<>();
+        Map<String, OkxOrder> latestOpenByPair = new HashMap<>();
+
+        for (OkxOrder order : timeline) {
+            boolean isClose = order.getIsWin() != null;
+            String key = holdingKey(order.getInstId(), order.getPosSide(), order.getSide());
+            String pairKey = pairKey(order.getInstId(), order.getPosSide());
+
+            if (!isClose) {
+                latestOpenByKey.put(key, order);
+                latestOpenByPair.put(pairKey, order);
+                continue;
+            }
+
+            OkxOrder target = closedById.get(order.getId());
+            if (target == null) {
+                continue;
+            }
+
+            OkxOrder open = latestOpenByKey.get(holdingKey(order.getInstId(), order.getPosSide(), oppositeSide(order.getSide())));
+            if (open == null) {
+                open = latestOpenByPair.get(pairKey);
+            }
+            if (open == null || open.getCreateTime() == null || target.getCreateTime() == null) {
+                continue;
+            }
+
+            long seconds = ChronoUnit.SECONDS.between(open.getCreateTime(), target.getCreateTime());
+            if (seconds > 0 && (target.getHoldingMinutes() == null || target.getHoldingMinutes() <= 0)) {
+                long minutes = (long) Math.ceil(seconds / 60.0);
+                target.setHoldingMinutes((int) Math.min(Math.max(1, minutes), Integer.MAX_VALUE));
+            }
+        }
+    }
+
+    private String holdingKey(String instId, String posSide, String side) {
+        return (instId == null ? "" : instId) + "|" + (posSide == null ? "net" : posSide) + "|" + (side == null ? "" : side);
+    }
+
+    private String pairKey(String instId, String posSide) {
+        return (instId == null ? "" : instId) + "|" + (posSide == null ? "net" : posSide);
+    }
+
+    private String oppositeSide(String side) {
+        if (side == null) return "";
+        if ("buy".equalsIgnoreCase(side)) return "sell";
+        if ("sell".equalsIgnoreCase(side)) return "buy";
+        return side;
+    }
 }
+
+
