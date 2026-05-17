@@ -672,7 +672,7 @@ public class PositionAiAnalysisService {
             return PositionAiAnalysisDto.builder()
                     .model(config.getModel())
                     .generatedAt(generatedAt)
-                    .headline("DeepSeek 返回内容未能解析为结构化 JSON")
+                    .headline("DeepSeek 返回内容暂时无法整理")
                     .riskLevel("未知")
                     .actionBias("人工复核")
                     .biasScore(0)

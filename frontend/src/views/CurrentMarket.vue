@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div>
     <div class="page-title">BTC / ETH 当前数据</div>
 
@@ -67,6 +67,16 @@
         <div class="chart-card">
           <div class="card-title">趋势评分</div>
           <div ref="scoreGaugeRef" style="height:360px" />
+          <div class="score-note" v-if="scoreDescription">
+            <div class="score-head">
+              <span>{{ scoreDescription.title }}</span>
+              <b :style="{ color: scoreDescription.color }">{{ scoreDescription.bias }}</b>
+            </div>
+            <div class="score-text">{{ scoreDescription.text }}</div>
+            <div class="score-factors">
+              <span v-for="item in scoreDescription.factors" :key="item.label" :class="item.tone">{{ item.label }} {{ item.value }}</span>
+            </div>
+          </div>
         </div>
       </el-col>
     </el-row>
@@ -82,6 +92,48 @@
         <div class="chart-card">
           <div class="card-title">成交量与均量</div>
           <div ref="volumeRef" style="height:320px" />
+        </div>
+      </el-col>
+    </el-row>
+
+    <el-row :gutter="16">
+      <el-col :span="8">
+        <div class="chart-card">
+          <div class="card-title">资金费率</div>
+          <div ref="fundingRef" style="height:260px" />
+        </div>
+      </el-col>
+      <el-col :span="8">
+        <div class="chart-card">
+          <div class="card-title">恐惧贪婪指数</div>
+          <div ref="greedRef" style="height:260px" />
+        </div>
+      </el-col>
+      <el-col :span="8">
+        <div class="chart-card">
+          <div class="card-title">波动率 / ATR</div>
+          <div ref="atrRef" style="height:260px" />
+        </div>
+      </el-col>
+    </el-row>
+
+    <el-row :gutter="16">
+      <el-col :span="8">
+        <div class="chart-card">
+          <div class="card-title">BOLL 带宽挤压</div>
+          <div ref="bollWidthRef" style="height:260px" />
+        </div>
+      </el-col>
+      <el-col :span="8">
+        <div class="chart-card">
+          <div class="card-title">趋势斜率</div>
+          <div ref="slopeRef" style="height:260px" />
+        </div>
+      </el-col>
+      <el-col :span="8">
+        <div class="chart-card">
+          <div class="card-title">成交量冲击</div>
+          <div ref="volumeShockRef" style="height:260px" />
         </div>
       </el-col>
     </el-row>
@@ -120,10 +172,14 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import dayjs from 'dayjs'
-import { getCandles } from '@/api'
+import { getCandles, getMarketFundingRateHistory } from '@/api'
 import { useTheme } from '@/composables/useTheme'
 
 const { isDark, cs, initChart } = useTheme()
+
+const props = defineProps({
+  active: { type: Boolean, default: true }
+})
 
 const period = ref('1H')
 const activeSymbol = ref('BTC')
@@ -137,6 +193,12 @@ const volumeRef = ref(null)
 const relativeRef = ref(null)
 const compareRef = ref(null)
 const scoreGaugeRef = ref(null)
+const fundingRef = ref(null)
+const greedRef = ref(null)
+const atrRef = ref(null)
+const bollWidthRef = ref(null)
+const slopeRef = ref(null)
+const volumeShockRef = ref(null)
 let charts = {}
 
 const symbolConfig = {
@@ -157,10 +219,13 @@ const overviewCards = computed(() => {
       emptyCard('趋势评分'),
     ]
   }
+  const close = s.lastClose
+  const ema20Now = Array.isArray(s.ema20) ? s.ema20.at(-1) : s.ema20
+  const ema50Now = Array.isArray(s.ema50) ? s.ema50.at(-1) : s.ema50
   return [
     { label: '最新价', value: fmtPrice(s.lastClose), sub: `区间 ${s.highest20.toFixed(2)} / ${s.lowest20.toFixed(2)}`, color: '#58a6ff' },
-    { label: '24H 变动', value: `${s.change24h >= 0 ? '+' : ''}${s.change24h.toFixed(2)}%`, sub: s.close > s.ema20 ? '站上 20EMA' : '低于 20EMA', color: s.change24h >= 0 ? '#3fb950' : '#f85149' },
-    { label: 'RSI', value: s.rsi.toFixed(1), sub: s.rsi > 70 ? '偏热' : s.rsi < 30 ? '偏冷' : '中性', color: s.rsi > 70 ? '#f0883e' : s.rsi < 30 ? '#58a6ff' : '#8b949e' },
+    { label: '24H 变动', value: `${s.change24h >= 0 ? '+' : ''}${s.change24h.toFixed(2)}%`, sub: close > ema20Now ? '站上 20EMA' : '低于 20EMA', color: s.change24h >= 0 ? '#3fb950' : '#f85149' },
+    { label: 'RSI', value: s.rsi.toFixed(1), sub: s.rsi > 70 ? '偏热' : s.rsi < 30 ? '偏冷' : '中性', color: s.rsi > 70 ? '#d29922' : s.rsi < 30 ? '#58a6ff' : '#8b949e' },
     { label: '趋势评分', value: `${s.score > 0 ? '+' : ''}${s.score.toFixed(0)}`, sub: s.trendText, color: scoreColor(s.score) },
   ]
 })
@@ -168,12 +233,43 @@ const overviewCards = computed(() => {
 const trendCards = computed(() => {
   const s = selected.value
   if (!s) return []
+  const hist = Array.isArray(s.macdHist) ? s.macdHist.at(-1) : s.macdHist
+  const close = s.lastClose
+  const ema20Now = Array.isArray(s.ema20) ? s.ema20.at(-1) : s.ema20
+  const ema50Now = Array.isArray(s.ema50) ? s.ema50.at(-1) : s.ema50
   return [
-    { title: '趋势', signal: s.trendText, tone: s.score > 2 ? 'bullish' : s.score < -2 ? 'bearish' : 'neutral', desc: `EMA20 ${s.close > s.ema20 ? '上方' : '下方'}，EMA20/50 ${s.ema20 > s.ema50 ? '多头' : '空头'}。` },
-    { title: '动量', signal: s.rsi > 70 ? '过热' : s.rsi < 30 ? '过冷' : '平衡', tone: s.rsi > 70 ? 'warning' : s.rsi < 30 ? 'bullish' : 'neutral', desc: `RSI ${s.rsi.toFixed(1)}，MACD 柱 ${s.macdHist > 0 ? '为正' : '为负'}。` },
-    { title: '结构', signal: s.close > s.highest20 ? '突破高点' : s.close < s.lowest20 ? '跌破低点' : '区间内', tone: s.close > s.highest20 ? 'bullish' : s.close < s.lowest20 ? 'bearish' : 'neutral', desc: `20 根高低点区间 ${s.lowest20.toFixed(2)} - ${s.highest20.toFixed(2)}。` },
+    { title: '趋势', signal: s.trendText, tone: s.score > 2 ? 'bullish' : s.score < -2 ? 'bearish' : 'neutral', desc: `EMA20 ${close > ema20Now ? '上方' : '下方'}，EMA20/50 ${ema20Now > ema50Now ? '多头' : '空头'}。` },
+    { title: '动量', signal: s.rsi > 70 ? '过热' : s.rsi < 30 ? '过冷' : '平衡', tone: s.rsi > 70 ? 'warning' : s.rsi < 30 ? 'bullish' : 'neutral', desc: `RSI ${s.rsi.toFixed(1)}，MACD 柱 ${hist > 0 ? '为正' : '为负'}。` },
+    { title: '结构', signal: close > s.highest20 ? '突破高点' : close < s.lowest20 ? '跌破低点' : '区间内', tone: close > s.highest20 ? 'bullish' : close < s.lowest20 ? 'bearish' : 'neutral', desc: `20 根高低点区间 ${s.lowest20.toFixed(2)} - ${s.highest20.toFixed(2)}。` },
     { title: '可能走势', signal: s.forecast, tone: s.score > 2 ? 'bullish' : s.score < -2 ? 'bearish' : 'warning', desc: s.forecastDetail },
   ]
+})
+
+const scoreDescription = computed(() => {
+  const s = selected.value
+  if (!s) return null
+  const hist = Array.isArray(s.macdHist) ? s.macdHist.at(-1) : s.macdHist
+  const shock = Array.isArray(s.volumeShock) ? (s.volumeShock.at(-1) || 1) : (s.volumeShock || 1)
+  const close = s.lastClose
+  const ema20Now = Array.isArray(s.ema20) ? s.ema20.at(-1) : s.ema20
+  const ema50Now = Array.isArray(s.ema50) ? s.ema50.at(-1) : s.ema50
+  const emaBias = close > ema20Now && ema20Now > ema50Now ? '多头' : close < ema20Now && ema20Now < ema50Now ? '空头' : '震荡'
+  const momentum = s.rsi > 70 ? '过热' : s.rsi < 30 ? '超卖修复' : hist > 0 ? '动能扩张' : '动能收缩'
+  const structure = close > s.highest20 ? '突破20根高点' : close < s.lowest20 ? '跌破20根低点' : '仍在结构区间内'
+  const volume = shock >= 1.5 ? '放量确认' : shock <= .7 ? '缩量观望' : '量能正常'
+  const bias = s.score > 3 ? '偏多执行' : s.score < -3 ? '偏空防守' : '中性等待'
+  return {
+    title: `评分 ${s.score > 0 ? '+' : ''}${s.score.toFixed(0)} / 10`,
+    bias,
+    color: scoreColor(s.score),
+    text: `当前评分来自 EMA 趋势、RSI/MACD 动量、20根K线突破结构与成交量确认。现在是${emaBias}结构，${momentum}，${structure}，${volume}。`,
+    factors: [
+      { label: 'EMA', value: emaBias, tone: emaBias === '多头' ? 'good' : emaBias === '空头' ? 'bad' : 'neutral' },
+      { label: 'RSI', value: s.rsi.toFixed(1), tone: s.rsi > 70 ? 'warn' : s.rsi < 30 ? 'good' : 'neutral' },
+      { label: 'MACD', value: hist > 0 ? '正柱' : '负柱', tone: hist > 0 ? 'good' : 'bad' },
+      { label: '量能', value: `${shock.toFixed(2)}x`, tone: shock >= 1.5 ? 'warn' : 'neutral' },
+    ],
+  }
 })
 
 const levelRows = computed(() => {
@@ -181,9 +277,9 @@ const levelRows = computed(() => {
   if (!s) return []
   return [
     { label: '支撑位', value: s.support.toFixed(2), judge: '下方防守', color: '#58a6ff', note: '来自最近 20 根 K 线低点与 ATR 缓冲。' },
-    { label: '压力位', value: s.resistance.toFixed(2), judge: '上方观察', color: '#f0883e', note: '来自最近 20 根 K 线高点与 ATR 缓冲。' },
+    { label: '压力位', value: s.resistance.toFixed(2), judge: '上方观察', color: '#d29922', note: '来自最近 20 根 K 线高点与 ATR 缓冲。' },
     { label: '趋势评分', value: `${s.score > 0 ? '+' : ''}${s.score.toFixed(0)}`, judge: s.score > 2 ? '偏多' : s.score < -2 ? '偏空' : '中性', color: scoreColor(s.score), note: '综合 EMA、RSI、MACD、突破与成交量加权。' },
-    { label: '偏离均值', value: `${s.deviationPct.toFixed(2)}%`, judge: Math.abs(s.deviationPct) > 3 ? '偏离较大' : '正常', color: Math.abs(s.deviationPct) > 3 ? '#f0883e' : '#3fb950', note: '当前价格相对 20EMA 的偏离程度。' },
+    { label: '偏离均值', value: `${s.deviationPct.toFixed(2)}%`, judge: Math.abs(s.deviationPct) > 3 ? '偏离较大' : '正常', color: Math.abs(s.deviationPct) > 3 ? '#d29922' : '#3fb950', note: '当前价格相对 20EMA 的偏离程度。' },
   ]
 })
 
@@ -192,20 +288,22 @@ function emptyCard(label) {
 }
 
 function chart(key, refEl) {
-  if (!charts[key]) charts[key] = initChart(refEl.value)
+  if (!charts[key] && refEl.value) charts[key] = initChart(refEl.value)
   return charts[key]
 }
 
 async function loadAll() {
   loading.value = true
   try {
-    const [btcRaw, ethRaw] = await Promise.all([
+    const [btcRaw, ethRaw, btcFunding, ethFunding] = await Promise.all([
       getCandles(symbolConfig.BTC.instId, period.value, 240),
       getCandles(symbolConfig.ETH.instId, period.value, 240),
+      getMarketFundingRateHistory(symbolConfig.BTC.instId, 100).catch(() => []),
+      getMarketFundingRateHistory(symbolConfig.ETH.instId, 100).catch(() => []),
     ])
     datasets.value = {
-      BTC: buildDataset('BTC', reverseCandles(btcRaw)),
-      ETH: buildDataset('ETH', reverseCandles(ethRaw)),
+      BTC: buildDataset('BTC', reverseCandles(btcRaw), reverseFunding(btcFunding)),
+      ETH: buildDataset('ETH', reverseCandles(ethRaw), reverseFunding(ethFunding)),
     }
     lastUpdate.value = dayjs().format('YYYY-MM-DD HH:mm:ss')
     await nextTick()
@@ -222,12 +320,19 @@ function renderAll() {
   renderRelative()
   renderCompare()
   renderGauge()
+  renderFunding()
+  renderGreed()
+  renderAtr()
+  renderBollWidth()
+  renderSlope()
+  renderVolumeShock()
 }
 
 function renderPrice() {
   const s = selected.value
   if (!s) return
   const c = chart('price', priceRef)
+  if (!c) return
   c.setOption({
     tooltip: {
       trigger: 'axis',
@@ -251,7 +356,7 @@ function renderPrice() {
       { name: 'K线', type: 'candlestick', data: s.ohlc,
         itemStyle: { color: '#3fb950', color0: '#f85149', borderColor: '#3fb950', borderColor0: '#f85149' } },
       { name: 'EMA20', type: 'line', data: s.ema20, smooth: false, symbol: 'none', lineStyle: { color: '#58a6ff', width: 2 } },
-      { name: 'EMA50', type: 'line', data: s.ema50, smooth: false, symbol: 'none', lineStyle: { color: '#f0883e', width: 1.8 } },
+      { name: 'EMA50', type: 'line', data: s.ema50, smooth: false, symbol: 'none', lineStyle: { color: '#d29922', width: 1.8 } },
       { name: 'EMA100', type: 'line', data: s.ema100, smooth: false, symbol: 'none', lineStyle: { color: '#8b949e', width: 1.5, type: 'dashed' } },
       { name: '上轨', type: 'line', data: s.bbUpper, smooth: false, symbol: 'none', lineStyle: { color: 'rgba(88,166,255,0.6)', width: 1 } },
       { name: '下轨', type: 'line', data: s.bbLower, smooth: false, symbol: 'none', lineStyle: { color: 'rgba(248,81,73,0.6)', width: 1 } },
@@ -263,6 +368,7 @@ function renderMomentum() {
   const s = selected.value
   if (!s) return
   const c = chart('momentum', momentumRef)
+  if (!c) return
   c.setOption({
     tooltip: { trigger: 'axis' },
     legend: { top: 0, textStyle: { color: cs.value.legendColor } },
@@ -274,7 +380,7 @@ function renderMomentum() {
     ],
     series: [
       { name: 'RSI', type: 'line', data: s.rsiSeries, yAxisIndex: 0, smooth: false, symbol: 'none', lineStyle: { color: '#58a6ff', width: 2 } },
-      { name: 'MACD', type: 'line', data: s.macdLine, yAxisIndex: 1, smooth: false, symbol: 'none', lineStyle: { color: '#f0883e', width: 1.8 } },
+      { name: 'MACD', type: 'line', data: s.macdLine, yAxisIndex: 1, smooth: false, symbol: 'none', lineStyle: { color: '#d29922', width: 1.8 } },
       { name: 'Signal', type: 'line', data: s.signalLine, yAxisIndex: 1, smooth: false, symbol: 'none', lineStyle: { color: '#8b949e', width: 1.4, type: 'dashed' } },
       { name: 'Hist', type: 'bar', data: s.macdHist, yAxisIndex: 1, barMaxWidth: 8,
         itemStyle: { color: p => p.value >= 0 ? '#3fb950' : '#f85149' } },
@@ -286,6 +392,7 @@ function renderVolume() {
   const s = selected.value
   if (!s) return
   const c = chart('volume', volumeRef)
+  if (!c) return
   c.setOption({
     tooltip: { trigger: 'axis' },
     legend: { top: 0, textStyle: { color: cs.value.legendColor } },
@@ -295,7 +402,7 @@ function renderVolume() {
     series: [
       { name: '成交量', type: 'bar', data: s.volumes, barMaxWidth: 10,
         itemStyle: { color: p => p.value >= s.volMa20[p.dataIndex] ? 'rgba(63,185,80,0.7)' : 'rgba(88,166,255,0.5)' } },
-      { name: '均量20', type: 'line', data: s.volMa20, smooth: false, symbol: 'none', lineStyle: { color: '#f0883e', width: 2 } }
+      { name: '均量20', type: 'line', data: s.volMa20, smooth: false, symbol: 'none', lineStyle: { color: '#d29922', width: 2 } }
     ]
   })
 }
@@ -305,6 +412,7 @@ function renderRelative() {
   const eth = datasets.value.ETH
   if (!btc || !eth) return
   const c = chart('relative', relativeRef)
+  if (!c) return
   const len = Math.min(btc.normalized.length, eth.normalized.length)
   const labels = btc.labels.slice(-len)
   const btcNorm = btc.normalized.slice(-len)
@@ -322,7 +430,7 @@ function renderRelative() {
     series: [
       { name: 'BTC 归一化', type: 'line', data: btcNorm, smooth: false, symbol: 'none', lineStyle: { color: '#58a6ff', width: 2 } },
       { name: 'ETH 归一化', type: 'line', data: ethNorm, smooth: false, symbol: 'none', lineStyle: { color: '#3fb950', width: 2 } },
-      { name: 'ETH/BTC', type: 'line', yAxisIndex: 1, data: ratio, smooth: false, symbol: 'none', lineStyle: { color: '#f0883e', width: 1.5 } },
+      { name: 'ETH/BTC', type: 'line', yAxisIndex: 1, data: ratio, smooth: false, symbol: 'none', lineStyle: { color: '#d29922', width: 1.5 } },
     ]
   })
 }
@@ -332,6 +440,7 @@ function renderCompare() {
   const eth = datasets.value.ETH
   if (!btc || !eth) return
   const c = chart('compare', compareRef)
+  if (!c) return
   c.setOption({
     tooltip: { trigger: 'axis' },
     radar: {
@@ -361,6 +470,7 @@ function renderGauge() {
   const s = selected.value
   if (!s) return
   const c = chart('gauge', scoreGaugeRef)
+  if (!c) return
   c.setOption({
     tooltip: { formatter: () => `${activeSymbol.value} 趋势评分：${s.score.toFixed(0)}` },
     series: [{
@@ -381,7 +491,88 @@ function renderGauge() {
   })
 }
 
-function buildDataset(symbol, candles) {
+function renderFunding() {
+  const s = selected.value
+  if (!s) return
+  const c = chart('funding', fundingRef)
+  if (!c) return
+  c.setOption(smallLineOption(s.fundingLabels, s.fundingRates, '#d29922', v => `${v.toFixed(4)}%`, '资金费率'))
+}
+
+function renderGreed() {
+  const s = selected.value
+  if (!s) return
+  const c = chart('greed', greedRef)
+  if (!c) return
+  const value = s.greedIndex.at(-1) || 50
+  c.setOption({
+    tooltip: { formatter: () => `指数: ${value.toFixed(0)}<br/>${greedLabel(value)}` },
+    series: [{
+      type: 'gauge',
+      min: 0,
+      max: 100,
+      startAngle: 210,
+      endAngle: -30,
+      radius: '88%',
+      axisLine: { lineStyle: { width: 12, color: [[0.25, '#3fb950'], [0.55, '#58a6ff'], [0.75, '#d29922'], [1, '#f85149']] } },
+      progress: { show: true, width: 12, itemStyle: { color: value > 75 ? '#f85149' : value > 55 ? '#d29922' : value < 25 ? '#3fb950' : '#58a6ff' } },
+      pointer: { width: 4 },
+      detail: { formatter: v => `${Math.round(v)}`, fontSize: 28, color: cs.value.labelColor },
+      title: { color: cs.value.legendColor, fontSize: 12 },
+      data: [{ value, name: greedLabel(value) }],
+    }]
+  })
+}
+
+function renderAtr() {
+  const s = selected.value
+  if (!s) return
+  const c = chart('atr', atrRef)
+  if (!c) return
+  c.setOption(smallLineOption(s.labels, s.atrPctSeries, '#a371f7', v => `${v.toFixed(2)}%`, 'ATR%'))
+}
+
+function renderBollWidth() {
+  const s = selected.value
+  if (!s) return
+  const c = chart('bollWidth', bollWidthRef)
+  if (!c) return
+  c.setOption(smallLineOption(s.labels, s.bollWidth, '#58a6ff', v => `${v.toFixed(2)}%`, 'BOLL宽度'))
+}
+
+function renderSlope() {
+  const s = selected.value
+  if (!s) return
+  const c = chart('slope', slopeRef)
+  if (!c) return
+  c.setOption(smallLineOption(s.labels, s.emaSlope, '#3fb950', v => `${v.toFixed(3)}%`, 'EMA斜率'))
+}
+
+function renderVolumeShock() {
+  const s = selected.value
+  if (!s) return
+  const c = chart('volumeShock', volumeShockRef)
+  if (!c) return
+  c.setOption({
+    tooltip: { trigger: 'axis', formatter: p => `${p[0].name}<br/>量能倍数: ${p[0].value.toFixed(2)}x` },
+    grid: { left: 50, right: 16, top: 18, bottom: 42 },
+    xAxis: { type: 'category', data: s.labels, axisLabel: { rotate: 30, fontSize: 9 } },
+    yAxis: { type: 'value', axisLabel: { formatter: v => `${v}x` }, splitLine: { lineStyle: { color: cs.value.gridLine } } },
+    series: [{ type: 'bar', data: s.volumeShock, barMaxWidth: 10, itemStyle: { color: p => p.value >= 1.5 ? '#d29922' : '#58a6ff', borderRadius: [3, 3, 0, 0] } }]
+  })
+}
+
+function smallLineOption(labels, values, color, formatter, name) {
+  return {
+    tooltip: { trigger: 'axis', formatter: p => `${p[0].name}<br/>${name}: ${formatter(p[0].value)}` },
+    grid: { left: 52, right: 16, top: 18, bottom: 42 },
+    xAxis: { type: 'category', data: labels, axisLabel: { rotate: 30, fontSize: 9 } },
+    yAxis: { type: 'value', splitLine: { lineStyle: { color: cs.value.gridLine } } },
+    series: [{ type: 'line', data: values, smooth: true, symbol: 'none', lineStyle: { color, width: 2 }, areaStyle: { color: `${color}22` } }]
+  }
+}
+
+function buildDataset(symbol, candles, fundingRows = []) {
   const bars = candles.map(c => ({
     ts: +c[0],
     open: num(c[1]),
@@ -405,6 +596,7 @@ function buildDataset(symbol, candles) {
   const highest20 = highest(highs, 20)
   const lowest20 = lowest(lows, 20)
   const atr14 = atrSeries(bars, 14)
+  const atrPctSeries = atr14.map((v, i) => closes[i] ? round(v / closes[i] * 100, 3) : 0)
   const lastClose = closes[closes.length - 1] || 0
   const close24 = closes[closes.length - 24] || closes[0] || lastClose
   const change24h = close24 ? (lastClose - close24) / close24 * 100 : 0
@@ -413,6 +605,13 @@ function buildDataset(symbol, candles) {
   const support = lowest20 - (atr14[atr14.length - 1] || 0) * 0.5
   const resistance = highest20 + (atr14[atr14.length - 1] || 0) * 0.5
   const deviationPct = ema20[ema20.length - 1] ? (lastClose - ema20[ema20.length - 1]) / ema20[ema20.length - 1] * 100 : 0
+  const bollWidth = closes.map((close, i) => close ? round((bb.upper[i] - bb.lower[i]) / close * 100, 3) : 0)
+  const emaSlope = ema20.map((v, i) => i === 0 || !ema20[i - 1] ? 0 : round((v - ema20[i - 1]) / ema20[i - 1] * 100, 4))
+  const volumeShock = volumes.map((v, i) => round(v / ((volMa20[i] || v || 1)), 3))
+  const fundingProxy = closes.map((close, i) => round(((close - (ema20[i] || close)) / close * 0.03) + ((rsiSeries[i] - 50) * 0.0008), 5))
+  const realFundingRates = fundingRows.map(row => round(num(row.fundingRate) * 100, 5))
+  const realFundingLabels = fundingRows.map(row => fmtTime(num(row.fundingTime)))
+  const greedIndex = closes.map((close, i) => clampValue(50 + (rsiSeries[i] - 50) * 0.55 + emaSlope[i] * 18 + (volumeShock[i] - 1) * 7 - atrPctSeries[i] * 1.2, 0, 100))
   const forecast = trendScore > 3 ? '偏多延续' : trendScore < -3 ? '偏空延续' : Math.abs(rsiSeries[rsiSeries.length - 1] || 0 - 50) < 6 ? '震荡整理' : '等待方向'
   const forecastDetail = trendScore > 3
     ? '价格与均线同向，MACD 和成交量配合，优先关注回踩承接。'
@@ -446,6 +645,14 @@ function buildDataset(symbol, candles) {
     highest20,
     lowest20,
     atr14,
+    atrPctSeries,
+    bollWidth,
+    emaSlope,
+    volumeShock,
+    fundingProxy,
+    fundingRates: realFundingRates.length ? realFundingRates : fundingProxy,
+    fundingLabels: realFundingLabels.length ? realFundingLabels : labels,
+    greedIndex,
     lastClose,
     change24h,
     score: trendScore,
@@ -466,6 +673,10 @@ function buildDataset(symbol, candles) {
 }
 
 function reverseCandles(raw) {
+  return Array.isArray(raw) ? raw.slice().reverse() : []
+}
+
+function reverseFunding(raw) {
   return Array.isArray(raw) ? raw.slice().reverse() : []
 }
 
@@ -597,12 +808,24 @@ function scoreColor(score) {
   if (score >= 5) return '#3fb950'
   if (score >= 2) return '#58a6ff'
   if (score <= -5) return '#f85149'
-  if (score <= -2) return '#f0883e'
+  if (score <= -2) return '#d29922'
   return '#8b949e'
 }
 
 function normalize(value, max) {
   return Math.max(0, Math.min(10, value / max * 10))
+}
+
+function clampValue(value, min, max) {
+  return Math.max(min, Math.min(max, value))
+}
+
+function greedLabel(value) {
+  if (value >= 75) return '极度贪婪'
+  if (value >= 55) return '偏贪婪'
+  if (value <= 25) return '极度恐惧'
+  if (value <= 45) return '偏恐惧'
+  return '中性'
 }
 
 function num(v) { return Number.parseFloat(v) || 0 }
@@ -620,6 +843,13 @@ watch(isDark, async () => {
   charts = {}
   await nextTick()
   renderAll()
+})
+
+watch(() => props.active, async active => {
+  if (!active) return
+  await nextTick()
+  renderAll()
+  onResize()
 })
 
 function onResize() { Object.values(charts).forEach(c => c?.resize()) }
@@ -644,8 +874,31 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); Object.value
 .trend-desc { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
 .trend-item.bullish .trend-signal { color: #3fb950; }
 .trend-item.bearish .trend-signal { color: #f85149; }
-.trend-item.warning .trend-signal { color: #f0883e; }
+.trend-item.warning .trend-signal { color: #d29922; }
 .trend-item.neutral .trend-signal { color: #8b949e; }
+.score-note {
+  margin: -14px 8px 8px;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-main);
+}
+.score-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+.score-head span { color: var(--text-secondary); font-size: 12px; font-weight: 700; }
+.score-head b { font-size: 15px; }
+.score-text { color: var(--text-secondary); font-size: 12px; line-height: 1.55; margin-bottom: 9px; }
+.score-factors { display: flex; flex-wrap: wrap; gap: 6px; }
+.score-factors span {
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--text-dim);
+  background: var(--bg-card);
+}
+.score-factors .good { color: #3fb950; border-color: rgba(63,185,80,.28); }
+.score-factors .bad { color: #f85149; border-color: rgba(248,81,73,.28); }
+.score-factors .warn { color: #d29922; border-color: rgba(210,153,34,.28); }
 .last-update { font-size: 12px; }
 .hint { font-size: 11px; color: var(--text-dim); font-weight: 400; margin-left: 6px; }
 .stat-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }

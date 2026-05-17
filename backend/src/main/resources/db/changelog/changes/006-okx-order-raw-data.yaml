@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: "006-okx-order-raw-data"
+      author: okx-analyzer
+      comment: "保存 OKX 原始订单 JSON，供交易详情展示完整字段"
+      changes:
+        - addColumn:
+            tableName: okx_order
+            columns:
+              - column:
+                  name: raw_data
+                  type: text
+                  remarks: "OKX orders-history 原始订单 JSON"

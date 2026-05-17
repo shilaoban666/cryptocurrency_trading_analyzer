@@ -17,11 +17,23 @@ export const syncOrders = (instType = 'all') =>
 export const getBalance = () =>
   http.get('/balance')
 
+export const getCalendarMonth = (month) =>
+  http.get('/calendar', { params: { month } })
+
+export const getDailyJournal = (date) =>
+  http.get(`/calendar/journal/${date}`)
+
+export const saveDailyJournal = (date, body) =>
+  http.post(`/calendar/journal/${date}`, body)
+
 export const getAnalysis = (params = {}) =>
   http.get('/analysis', { params })
 
 export const getOrders = (params = {}) =>
   http.get('/orders', { params })
+
+export const getLossOrders = (params = {}) =>
+  http.get('/orders/losses', { params })
 
 export const getSymbols = () =>
   http.get('/orders/symbols')
@@ -38,6 +50,9 @@ export const syncLiquidation = () =>
 export const getCandles = (instId, bar = '1H', limit = 300) =>
   http.get('/market/candles', { params: { instId, bar, limit } })
 
+export const getMarketFundingRateHistory = (instId, limit = 100) =>
+  http.get('/market/funding-rate-history', { params: { instId, limit } })
+
 export const getReviewOrders = (params = {}) =>
   http.get('/review/orders', { params })
 
@@ -47,6 +62,9 @@ export const saveReview = (ordId, body) =>
 export const getReviewStats = () =>
   http.get('/review/stats')
 
+export const getLossAiAnalysis = () =>
+  http.post('/review/loss-ai-analysis', {}, { timeout: 120000 })
+
 export const getCurrentPositions = () =>
   http.get('/positions/current')
 
@@ -55,6 +73,12 @@ export const getPositionAiAnalysis = () =>
 
 export const openPositionAiAnalysisStream = () =>
   new EventSource('/api/positions/ai-analysis/stream')
+
+export const getTradingInsights = (params = {}) =>
+  http.get('/insights', { params })
+
+export const refreshTradingInsights = () =>
+  http.post('/insights/refresh')
 
 // ── OKX 公开市场数据（主力大户分析）──────────────────────────
 const okx = axios.create({ baseURL: '/okx', timeout: 30000 })

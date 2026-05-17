@@ -70,6 +70,9 @@ public class OkxOrder {
     /** 1=强平单 0=普通单 */
     private Integer isLiquidation;
 
+    @Column(columnDefinition = "TEXT")
+    private String rawData;
+
     @Column(updatable = false)
     private LocalDateTime syncedAt;
 

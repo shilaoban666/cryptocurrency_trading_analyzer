@@ -14,6 +14,8 @@ public interface OkxOrderRepository extends JpaRepository<OkxOrder, Long> {
 
     boolean existsByOrdId(String ordId);
 
+    Optional<OkxOrder> findByOrdId(String ordId);
+
     Optional<OkxOrder> findTopByOrderByCreateTimeDesc();
 
     /** 所有已成交的关仓单（pnl 非零） */
@@ -29,6 +31,13 @@ public interface OkxOrderRepository extends JpaRepository<OkxOrder, Long> {
            "AND o.createTime BETWEEN :start AND :end ORDER BY o.createTime ASC")
     List<OkxOrder> findClosedOrdersBetween(@Param("start") LocalDateTime start,
                                             @Param("end") LocalDateTime end);
+
+    /** 按平仓/更新时间范围查询关仓单，用于按日盈亏聚合 */
+    @Query("SELECT o FROM OkxOrder o WHERE o.state = 'filled' AND o.isWin IS NOT NULL " +
+           "AND COALESCE(o.updateTime, o.createTime) BETWEEN :start AND :end " +
+           "ORDER BY COALESCE(o.updateTime, o.createTime) ASC")
+    List<OkxOrder> findClosedOrdersSettledBetween(@Param("start") LocalDateTime start,
+                                                  @Param("end") LocalDateTime end);
 
     /** 分页查所有单 */
     @Query("SELECT o FROM OkxOrder o WHERE " +

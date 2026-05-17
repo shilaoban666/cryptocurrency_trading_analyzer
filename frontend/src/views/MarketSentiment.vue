@@ -1,7 +1,9 @@
-<template>
+﻿<template>
   <div>
     <div class="page-title">主力大户分析</div>
 
+    <el-tabs v-model="activeTab" class="market-tabs" @tab-change="onMarketTabChange">
+      <el-tab-pane label="大户指标" name="sentiment">
     <div class="chart-card filter-card">
       <el-row :gutter="16" align="middle">
         <el-col :span="6">
@@ -135,6 +137,91 @@
         </div>
       </el-col>
     </el-row>
+      </el-tab-pane>
+
+      <el-tab-pane label="资金流" name="flow">
+        <div class="chart-card filter-card">
+          <el-row :gutter="16" align="middle">
+            <el-col :span="14">
+              <div class="flow-note">BTC/ETH 主力与散户流入流出，基于 OKX 主动成交量和精英交易员多空变化估算</div>
+            </el-col>
+            <el-col :span="4">
+              <el-select v-model="flowFocusPeriod" @change="renderFlowCharts">
+                <el-option v-for="p in FLOW_PERIODS" :key="p.value" :label="p.label" :value="p.value" />
+              </el-select>
+            </el-col>
+            <el-col :span="3">
+              <el-button type="primary" :loading="flowLoading" @click="loadMoneyFlow">
+                <el-icon><Refresh /></el-icon>
+                刷新
+              </el-button>
+            </el-col>
+            <el-col :span="3" style="text-align:right">
+              <span v-if="flowLastUpdate" class="text-dim last-update">{{ flowLastUpdate }}</span>
+            </el-col>
+          </el-row>
+        </div>
+
+        <el-row :gutter="16" style="margin-bottom:16px">
+          <el-col :span="12" v-for="symbol in FLOW_SYMBOLS" :key="symbol">
+            <div class="chart-card flow-summary">
+              <div class="card-title">{{ symbolLabel(symbol) }} 资金流快照<span class="hint">{{ periodLabel(flowFocusPeriod) }}</span></div>
+              <div class="flow-metric-grid">
+                <div v-for="item in flowSnapshot(symbol)" :key="item.label" class="flow-metric">
+                  <span>{{ item.label }}</span>
+                  <b :style="{ color: item.color }">{{ item.value }}</b>
+                  <em>{{ item.sub }}</em>
+                </div>
+              </div>
+            </div>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <div class="chart-card">
+              <div class="card-title">BTC 主力/散户资金流</div>
+              <div ref="flowBtcRef" style="height:340px" />
+            </div>
+          </el-col>
+          <el-col :span="12">
+            <div class="chart-card">
+              <div class="card-title">ETH 主力/散户资金流</div>
+              <div ref="flowEthRef" style="height:340px" />
+            </div>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="16">
+          <el-col :span="12" v-for="symbol in FLOW_SYMBOLS" :key="`${symbol}-table`">
+            <div class="chart-card">
+              <div class="card-title">{{ symbolLabel(symbol) }} 分周期资金流明细</div>
+              <el-table :data="moneyFlowRows[symbol] || []" size="small" style="width:100%">
+                <el-table-column prop="label" label="周期" width="72" />
+                <el-table-column label="主力流入">
+                  <template #default="{ row }"><span class="profit">{{ fmtMoney(row.whaleIn) }}</span></template>
+                </el-table-column>
+                <el-table-column label="主力流出">
+                  <template #default="{ row }"><span class="loss">{{ fmtMoney(row.whaleOut) }}</span></template>
+                </el-table-column>
+                <el-table-column label="散户流入">
+                  <template #default="{ row }"><span class="profit">{{ fmtMoney(row.retailIn) }}</span></template>
+                </el-table-column>
+                <el-table-column label="散户流出">
+                  <template #default="{ row }"><span class="loss">{{ fmtMoney(row.retailOut) }}</span></template>
+                </el-table-column>
+                <el-table-column label="总流入">
+                  <template #default="{ row }">{{ fmtMoney(row.totalIn) }}</template>
+                </el-table-column>
+                <el-table-column label="总流出">
+                  <template #default="{ row }">{{ fmtMoney(row.totalOut) }}</template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </el-col>
+        </el-row>
+      </el-tab-pane>
+    </el-tabs>
   </div>
 </template>
 
@@ -151,17 +238,33 @@ const SYMBOLS = [
   'XRP-USDT-SWAP', 'BNB-USDT-SWAP', 'DOGE-USDT-SWAP',
   'ADA-USDT-SWAP', 'AVAX-USDT-SWAP', 'LINK-USDT-SWAP', 'OP-USDT-SWAP',
 ]
+const FLOW_SYMBOLS = ['BTC-USDT-SWAP', 'ETH-USDT-SWAP']
+const FLOW_PERIODS = [
+  { label: '1分', value: '1m' },
+  { label: '5分', value: '5m' },
+  { label: '15分', value: '15m' },
+  { label: '1小时', value: '1H' },
+  { label: '4小时', value: '4H' },
+  { label: '1日', value: '1D' },
+  { label: '三日', value: '3D', source: '1D', aggregate: 3 },
+  { label: '1周', value: '1W', source: '1D', aggregate: 7 },
+]
 
+const activeTab = ref('sentiment')
 const instId = ref('BTC-USDT-SWAP')
 const period = ref('1H')
 const loading = ref(false)
 const lastUpdate = ref('')
+const flowLoading = ref(false)
+const flowFocusPeriod = ref('15m')
+const flowLastUpdate = ref('')
 
 const posRatioData = ref([])
 const acctRatioData = ref([])
 const takerData = ref([])
 const fundingData = ref([])
 const oiData = ref([])
+const moneyFlowRows = ref({ 'BTC-USDT-SWAP': [], 'ETH-USDT-SWAP': [] })
 
 const posRatioRef = ref(null)
 const acctRatioRef = ref(null)
@@ -173,6 +276,8 @@ const ratioGapRef = ref(null)
 const takerImbalanceRef = ref(null)
 const fundingTrendRef = ref(null)
 const oiDeltaRef = ref(null)
+const flowBtcRef = ref(null)
+const flowEthRef = ref(null)
 let charts = {}
 
 const okxHttp = axios.create({ baseURL: '/okx', timeout: 30000 })
@@ -651,6 +756,121 @@ async function loadAll() {
   }
 }
 
+async function loadMoneyFlow() {
+  flowLoading.value = true
+  try {
+    const entries = await Promise.all(FLOW_SYMBOLS.map(async symbol => {
+      const rows = await Promise.all(FLOW_PERIODS.map(async p => {
+        const [taker, pos, acct] = await Promise.all([
+          fetchOkx('/api/v5/rubik/stat/taker-volume-contract', { instId: symbol, period: p.source || p.value, limit: p.aggregate ? p.aggregate + 10 : 30 }),
+          fetchOkx('/api/v5/rubik/stat/contracts/long-short-position-ratio-contract-top-trader', { instId: symbol, period: p.source || p.value, limit: p.aggregate ? p.aggregate + 10 : 30 }),
+          fetchOkx('/api/v5/rubik/stat/contracts/long-short-account-ratio-contract', { instId: symbol, period: p.source || p.value, limit: p.aggregate ? p.aggregate + 10 : 30 }),
+        ])
+        return buildFlowRow(symbol, p, taker, pos, acct)
+      }))
+      return [symbol, rows]
+    }))
+    moneyFlowRows.value = Object.fromEntries(entries)
+    flowLastUpdate.value = dayjs().format('HH:mm:ss')
+    await nextTick()
+    renderFlowCharts()
+  } finally {
+    flowLoading.value = false
+  }
+}
+
+function buildFlowRow(symbol, periodItem, taker, pos, acct) {
+  const sampleSize = periodItem.aggregate || Math.min(12, taker.length)
+  const slice = taker.slice(-Math.min(sampleSize, taker.length))
+  const buyVol = slice.reduce((sum, d) => sum + num(d[2]), 0)
+  const sellVol = slice.reduce((sum, d) => sum + num(d[1]), 0)
+  const totalIn = buyVol
+  const totalOut = sellVol
+  const posMomentum = ratioMomentum(pos, periodItem.aggregate)
+  const acctMomentum = ratioMomentum(acct, periodItem.aggregate)
+  const whaleWeight = clamp(0.5 + (posMomentum - acctMomentum) * 0.18, 0.28, 0.72)
+  const retailWeight = 1 - whaleWeight
+  return {
+    symbol,
+    period: periodItem.value,
+    label: periodItem.label,
+    whaleIn: round(totalIn * whaleWeight, 2),
+    whaleOut: round(totalOut * whaleWeight, 2),
+    retailIn: round(totalIn * retailWeight, 2),
+    retailOut: round(totalOut * retailWeight, 2),
+    totalIn: round(totalIn, 2),
+    totalOut: round(totalOut, 2),
+    net: round(totalIn - totalOut, 2),
+    whaleWeight,
+  }
+}
+
+function ratioMomentum(rows, sampleSize) {
+  if (!rows.length) return 0
+  const latest = num(last(rows)?.[1])
+  const lookback = sampleSize || 6
+  const prev = num(rows[Math.max(0, rows.length - lookback)]?.[1])
+  if (!prev) return 0
+  return (latest - prev) / Math.abs(prev)
+}
+
+function renderFlowCharts() {
+  renderFlowChart('flowBtc', flowBtcRef, 'BTC-USDT-SWAP')
+  renderFlowChart('flowEth', flowEthRef, 'ETH-USDT-SWAP')
+}
+
+function renderFlowChart(key, elRef, symbol) {
+  const c = ic(key, elRef)
+  const rows = moneyFlowRows.value[symbol] || []
+  c.setOption({
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    legend: { top: 0, textStyle: { color: cs.value.legendColor } },
+    grid: { left: 70, right: 20, top: 35, bottom: 42 },
+    xAxis: { type: 'category', data: rows.map(r => r.label), axisLabel: { fontSize: 10 } },
+    yAxis: { type: 'value', axisLabel: { formatter: v => compactMoney(v) }, splitLine: { lineStyle: { color: cs.value.gridLine } } },
+    series: [
+      { name: '主力流入', type: 'bar', stack: 'in', data: rows.map(r => r.whaleIn), itemStyle: { color: '#238636' } },
+      { name: '散户流入', type: 'bar', stack: 'in', data: rows.map(r => r.retailIn), itemStyle: { color: '#3fb950' } },
+      { name: '主力流出', type: 'bar', stack: 'out', data: rows.map(r => -r.whaleOut), itemStyle: { color: '#da3633' } },
+      { name: '散户流出', type: 'bar', stack: 'out', data: rows.map(r => -r.retailOut), itemStyle: { color: '#f85149' } },
+      { name: '净流入', type: 'line', data: rows.map(r => r.net), symbol: 'circle', lineStyle: { color: '#58a6ff', width: 2 } },
+    ]
+  })
+}
+
+function flowSnapshot(symbol) {
+  const row = (moneyFlowRows.value[symbol] || []).find(r => r.period === flowFocusPeriod.value)
+  if (!row) {
+    return [
+      { label: '主力流入', value: '--', sub: '等待数据', color: '#3fb950' },
+      { label: '主力流出', value: '--', sub: '等待数据', color: '#f85149' },
+      { label: '散户流入', value: '--', sub: '等待数据', color: '#3fb950' },
+      { label: '散户流出', value: '--', sub: '等待数据', color: '#f85149' },
+      { label: '总流入', value: '--', sub: '等待数据', color: '#58a6ff' },
+      { label: '总流出', value: '--', sub: '等待数据', color: '#f0883e' },
+    ]
+  }
+  return [
+    { label: '主力流入', value: fmtMoney(row.whaleIn), sub: `权重 ${(row.whaleWeight * 100).toFixed(0)}%`, color: '#3fb950' },
+    { label: '主力流出', value: fmtMoney(row.whaleOut), sub: '主动卖出估算', color: '#f85149' },
+    { label: '散户流入', value: fmtMoney(row.retailIn), sub: '账户差值估算', color: '#3fb950' },
+    { label: '散户流出', value: fmtMoney(row.retailOut), sub: '账户差值估算', color: '#f85149' },
+    { label: '总流入', value: fmtMoney(row.totalIn), sub: `净额 ${fmtMoney(row.net)}`, color: '#58a6ff' },
+    { label: '总流出', value: fmtMoney(row.totalOut), sub: periodLabel(row.period), color: '#f0883e' },
+  ]
+}
+
+function onMarketTabChange(name) {
+  nextTick(() => {
+    if (name === 'flow') {
+      if (!moneyFlowRows.value['BTC-USDT-SWAP']?.length) loadMoneyFlow()
+      else renderFlowCharts()
+    } else {
+      renderAll()
+    }
+  })
+}
+
 function fmtTs(ts) { return dayjs(+ts).format('MM-DD HH:mm') }
 function num(v) { return Number.parseFloat(v) || 0 }
 function round(v, digits = 2) { return +Number(v || 0).toFixed(digits) }
@@ -680,15 +900,27 @@ function rollingAverage(values, windowSize) {
   })
 }
 function ic(key, elRef) {
-  if (!charts[key]) charts[key] = initChart(elRef.value)
+  if (!charts[key] && elRef.value) charts[key] = initChart(elRef.value)
   return charts[key]
 }
+function clamp(value, min, max) { return Math.min(max, Math.max(min, value)) }
+function symbolLabel(symbol) { return symbol.startsWith('BTC') ? 'BTC' : symbol.startsWith('ETH') ? 'ETH' : symbol }
+function periodLabel(value) { return FLOW_PERIODS.find(p => p.value === value)?.label || value }
+function compactMoney(v) {
+  const abs = Math.abs(Number(v || 0))
+  const sign = Number(v || 0) < 0 ? '-' : ''
+  if (abs >= 1e9) return `${sign}${(abs / 1e9).toFixed(2)}B`
+  if (abs >= 1e6) return `${sign}${(abs / 1e6).toFixed(2)}M`
+  if (abs >= 1e3) return `${sign}${(abs / 1e3).toFixed(1)}K`
+  return `${sign}${abs.toFixed(0)}`
+}
+function fmtMoney(v) { return compactMoney(v) }
 
 watch(isDark, async () => {
   Object.values(charts).forEach(c => c?.dispose())
   charts = {}
   await nextTick()
-  renderAll()
+  activeTab.value === 'flow' ? renderFlowCharts() : renderAll()
 })
 
 function onResize() { Object.values(charts).forEach(c => c?.resize()) }
@@ -699,6 +931,8 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); Object.value
 
 <style scoped>
 .filter-card { margin-bottom: 16px; padding: 12px 20px; }
+.market-tabs :deep(.el-tabs__item) { color: var(--text-secondary); }
+.market-tabs :deep(.el-tabs__item.is-active) { color: #58a6ff; }
 .filter-item { display: flex; align-items: center; gap: 8px; }
 .filter-item .text-muted { font-size: 13px; white-space: nowrap; }
 .last-update { font-size: 12px; }
@@ -722,4 +956,23 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); Object.value
 .sig-value { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
 .sig-desc { font-size: 11px; color: var(--text-dim); }
 .hint { font-size: 11px; color: var(--text-dim); font-weight: 400; margin-left: 6px; }
+.flow-note { color: var(--text-secondary); font-size: 13px; }
+.flow-summary { min-height: 210px; }
+.flow-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.flow-metric {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--bg-main);
+}
+.flow-metric span { display: block; color: var(--text-secondary); font-size: 12px; margin-bottom: 6px; }
+.flow-metric b { display: block; font-size: 18px; margin-bottom: 4px; }
+.flow-metric em { color: var(--text-dim); font-size: 11px; font-style: normal; }
+.profit { color: #3fb950; }
+.loss { color: #f85149; }
 </style>
+

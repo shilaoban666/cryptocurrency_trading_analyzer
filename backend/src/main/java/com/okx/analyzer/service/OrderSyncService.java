@@ -32,13 +32,23 @@ public class OrderSyncService {
 
         for (JsonNode node : rawOrders) {
             String ordId = node.path("ordId").asText();
-            if (seen.contains(ordId) || orderRepo.existsByOrdId(ordId)) {
+            if (seen.contains(ordId)) {
                 seen.add(ordId);
                 continue;
             }
             seen.add(ordId);
 
             try {
+                Optional<OkxOrder> existing = orderRepo.findByOrdId(ordId);
+                if (existing.isPresent()) {
+                    OkxOrder order = existing.get();
+                    if (order.getRawData() == null || order.getRawData().isBlank()) {
+                        order.setRawData(node.toString());
+                        orderRepo.save(order);
+                    }
+                    continue;
+                }
+
                 OkxOrder order = parseOrder(node);
                 orderRepo.save(order);
                 newCount++;
@@ -67,6 +77,7 @@ public class OrderSyncService {
         o.setFee(decimal(n, "fee"));
         o.setLever(n.path("lever").asText(""));
         o.setState(n.path("state").asText());
+        o.setRawData(n.toString());
 
         long cMs = n.path("cTime").asLong();
         long uMs = n.path("uTime").asLong();

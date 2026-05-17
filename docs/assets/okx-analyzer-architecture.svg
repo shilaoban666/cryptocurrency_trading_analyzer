@@ -1,0 +1,159 @@
+<svg width="1280" height="760" viewBox="0 0 1280 760" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">OKX Analyzer Architecture</title>
+  <desc id="desc">Machine-style architecture diagram for the OKX Analyzer trading intelligence platform.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="760" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#070B14"/>
+      <stop offset="0.45" stop-color="#0B1220"/>
+      <stop offset="1" stop-color="#101827"/>
+    </linearGradient>
+    <linearGradient id="cyan" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#22D3EE"/>
+      <stop offset="1" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="violet" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#A78BFA"/>
+      <stop offset="1" stop-color="#7C3AED"/>
+    </linearGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#4ADE80"/>
+      <stop offset="1" stop-color="#16A34A"/>
+    </linearGradient>
+    <linearGradient id="orange" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#FDBA74"/>
+      <stop offset="1" stop-color="#EA580C"/>
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.1 0 0 0 0 0.7 0 0 0 0 1 0 0 0 0.55 0"/>
+      <feBlend in="SourceGraphic"/>
+    </filter>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#000814" flood-opacity="0.55"/>
+    </filter>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" stroke="#1E293B" stroke-width="1" opacity="0.45"/>
+    </pattern>
+  </defs>
+
+  <rect width="1280" height="760" fill="url(#bg)"/>
+  <rect width="1280" height="760" fill="url(#grid)" opacity="0.55"/>
+  <path d="M80 86H1200" stroke="#1E3A8A" stroke-width="1"/>
+  <path d="M80 674H1200" stroke="#1E3A8A" stroke-width="1"/>
+  <circle cx="1120" cy="120" r="180" fill="#0EA5E9" opacity="0.08"/>
+  <circle cx="150" cy="650" r="220" fill="#7C3AED" opacity="0.08"/>
+
+  <text x="80" y="62" fill="#E5F6FF" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="30" font-weight="800" letter-spacing="1">
+    OKX ANALYZER
+  </text>
+  <text x="350" y="62" fill="#67E8F9" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" letter-spacing="4">
+    TRADING INTELLIGENCE PIPELINE
+  </text>
+  <text x="80" y="708" fill="#64748B" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13">
+    BTC / ETH perpetual futures · OKX data sync · Quant engine · Risk matrix · DeepSeek V4 Pro SSE
+  </text>
+
+  <g filter="url(#soft)">
+    <rect x="70" y="120" width="250" height="420" rx="22" fill="#0F172A" stroke="#164E63" stroke-width="1.5"/>
+    <rect x="88" y="140" width="214" height="52" rx="14" fill="#082F49" stroke="#22D3EE" stroke-opacity="0.55"/>
+    <text x="108" y="172" fill="#E0F2FE" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18" font-weight="800">FRONTEND</text>
+    <text x="108" y="218" fill="#93C5FD" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13">Vue 3 · Router · Element Plus</text>
+    <text x="108" y="244" fill="#93C5FD" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13">ECharts · Axios · EventSource</text>
+    <g fill="#D8F7FF" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="12">
+      <text x="108" y="292">Dashboard</text>
+      <text x="108" y="318">Balance</text>
+      <text x="108" y="344">Current Market</text>
+      <text x="108" y="370">Current Positions</text>
+      <text x="108" y="396">Deep Analysis</text>
+      <text x="108" y="422">Whale Sentiment</text>
+      <text x="108" y="448">Orders / Liquidation</text>
+      <text x="108" y="474">Trade Review</text>
+    </g>
+    <circle cx="286" cy="506" r="10" fill="url(#cyan)" filter="url(#glow)"/>
+  </g>
+
+  <g filter="url(#soft)">
+    <rect x="400" y="96" width="480" height="490" rx="26" fill="#0B1120" stroke="#334155" stroke-width="1.5"/>
+    <rect x="424" y="122" width="432" height="64" rx="16" fill="#111827" stroke="#4F46E5" stroke-opacity="0.7"/>
+    <text x="448" y="161" fill="#F8FAFC" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="22" font-weight="900">SPRING BOOT CORE</text>
+    <text x="676" y="161" fill="#A5B4FC" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13" font-weight="700">Java 17 · JPA · Liquibase</text>
+
+    <rect x="424" y="222" width="200" height="132" rx="18" fill="#111827" stroke="#22D3EE" stroke-opacity="0.5"/>
+    <text x="448" y="254" fill="#67E8F9" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" font-weight="800">CONTROLLERS</text>
+    <g fill="#CBD5E1" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="12">
+      <text x="448" y="284">Analysis · Balance</text>
+      <text x="448" y="308">Position · Market</text>
+      <text x="448" y="332">Order · Sync · Review</text>
+    </g>
+
+    <rect x="656" y="222" width="200" height="132" rx="18" fill="#111827" stroke="#A78BFA" stroke-opacity="0.5"/>
+    <text x="680" y="254" fill="#C4B5FD" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" font-weight="800">AI SERVICE</text>
+    <g fill="#CBD5E1" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="12">
+      <text x="680" y="284">PositionAiAnalysis</text>
+      <text x="680" y="308">SseEmitter Stream</text>
+      <text x="680" y="332">JSON Signal Parser</text>
+    </g>
+
+    <rect x="424" y="386" width="200" height="132" rx="18" fill="#111827" stroke="#4ADE80" stroke-opacity="0.5"/>
+    <text x="448" y="418" fill="#86EFAC" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" font-weight="800">QUANT ENGINE</text>
+    <g fill="#CBD5E1" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="12">
+      <text x="448" y="448">Win Rate · PF · EV</text>
+      <text x="448" y="472">Drawdown · Holding Time</text>
+      <text x="448" y="496">Risk Diagnostics</text>
+    </g>
+
+    <rect x="656" y="386" width="200" height="132" rx="18" fill="#111827" stroke="#FDBA74" stroke-opacity="0.5"/>
+    <text x="680" y="418" fill="#FED7AA" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" font-weight="800">OKX CONNECTOR</text>
+    <g fill="#CBD5E1" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="12">
+      <text x="680" y="448">Signed Account API</text>
+      <text x="680" y="472">Rubik Public Data</text>
+      <text x="680" y="496">Candles · OI · Funding</text>
+    </g>
+
+    <circle cx="640" cy="555" r="11" fill="url(#violet)" filter="url(#glow)"/>
+  </g>
+
+  <g filter="url(#soft)">
+    <rect x="962" y="120" width="250" height="178" rx="22" fill="#0F172A" stroke="#15803D" stroke-width="1.5"/>
+    <rect x="980" y="140" width="214" height="50" rx="14" fill="#052E16" stroke="#4ADE80" stroke-opacity="0.55"/>
+    <text x="1000" y="171" fill="#DCFCE7" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18" font-weight="800">POSTGRESQL</text>
+    <g fill="#BBF7D0" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="12">
+      <text x="1000" y="222">okx_order</text>
+      <text x="1000" y="248">liquidation_record</text>
+      <text x="1000" y="274">order_review</text>
+    </g>
+  </g>
+
+  <g filter="url(#soft)">
+    <rect x="962" y="362" width="250" height="178" rx="22" fill="#0F172A" stroke="#9A3412" stroke-width="1.5"/>
+    <rect x="980" y="382" width="214" height="50" rx="14" fill="#431407" stroke="#FDBA74" stroke-opacity="0.55"/>
+    <text x="1000" y="413" fill="#FFEDD5" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18" font-weight="800">EXTERNAL APIs</text>
+    <g fill="#FED7AA" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="12">
+      <text x="1000" y="464">OKX REST API v5</text>
+      <text x="1000" y="490">OKX Rubik Public Data</text>
+      <text x="1000" y="516">DeepSeek Chat Completions</text>
+    </g>
+  </g>
+
+  <path d="M320 330 C355 330 365 330 400 330" stroke="url(#cyan)" stroke-width="3" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M880 210 C915 210 925 210 962 210" stroke="url(#green)" stroke-width="3" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M880 452 C915 452 925 452 962 452" stroke="url(#orange)" stroke-width="3" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M640 586 C640 620 640 622 640 650 C640 674 860 674 1087 674 C1087 620 1087 590 1087 540" stroke="url(#violet)" stroke-width="2" stroke-dasharray="7 9" opacity="0.8"/>
+
+  <g font-family="Inter, Segoe UI, Arial, sans-serif" font-size="12" font-weight="700">
+    <text x="332" y="314" fill="#67E8F9">REST / SSE / Proxy</text>
+    <text x="900" y="194" fill="#86EFAC">JPA</text>
+    <text x="898" y="436" fill="#FDBA74">Signed + Public</text>
+    <text x="764" y="662" fill="#C4B5FD">AI stream back to cockpit</text>
+  </g>
+
+  <g opacity="0.9">
+    <rect x="82" y="574" width="1116" height="62" rx="18" fill="#020617" stroke="#1E40AF" stroke-opacity="0.65"/>
+    <text x="110" y="611" fill="#E0F2FE" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" font-weight="800">
+      DATA LOOP:
+    </text>
+    <text x="210" y="611" fill="#93C5FD" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14">
+      OKX orders + account + market microstructure -> local quant metrics -> position risk matrix -> DeepSeek SSE action analysis
+    </text>
+  </g>
+</svg>

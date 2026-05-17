@@ -1,0 +1,51 @@
+databaseChangeLog:
+  - changeSet:
+      id: "005-daily-journal"
+      author: okx-analyzer
+      comment: "创建 daily_journal 表（日历每日反思）"
+      changes:
+        - createTable:
+            tableName: daily_journal
+            remarks: "按日期保存交易日记和反思"
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: journal_date
+                  type: date
+                  remarks: "日记日期"
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: mood
+                  type: varchar(24)
+                  remarks: "当日情绪状态"
+              - column:
+                  name: tags
+                  type: text
+                  remarks: "反思标签，逗号分隔"
+              - column:
+                  name: content
+                  type: text
+                  remarks: "日记正文"
+              - column:
+                  name: created_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+
+        - createIndex:
+            tableName: daily_journal
+            indexName: idx_daily_journal_date
+            columns:
+              - column:
+                  name: journal_date
