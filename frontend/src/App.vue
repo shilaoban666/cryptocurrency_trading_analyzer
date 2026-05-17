@@ -2,8 +2,8 @@
   <el-container class="app-layout">
     <el-aside width="220px" class="sidebar">
       <div class="logo">
-        <span class="logo-icon">OKX</span>
-        <span class="logo-text">交易分析</span>
+        <span class="logo-icon">币</span>
+        <span class="logo-text">加密交易分析</span>
       </div>
 
       <el-menu
@@ -20,26 +20,29 @@
         <el-menu-item index="/balance">
           <el-icon><Money /></el-icon><span>资金变化</span>
         </el-menu-item>
-        <el-menu-item index="/current-market">
-          <el-icon><TrendCharts /></el-icon><span>当前行情</span>
-        </el-menu-item>
-        <el-menu-item index="/positions">
-          <el-icon><Clock /></el-icon><span>当前持仓</span>
-        </el-menu-item>
-        <el-menu-item index="/analysis">
-          <el-icon><TrendCharts /></el-icon><span>深度分析</span>
+        <el-menu-item index="/market-analysis">
+          <el-icon><DataLine /></el-icon><span>行情分析</span>
         </el-menu-item>
         <el-menu-item index="/orders">
-          <el-icon><List /></el-icon><span>交易记录</span>
+          <el-icon><List /></el-icon><span>交易分析</span>
+        </el-menu-item>
+        <el-menu-item index="/insights">
+          <el-icon><Reading /></el-icon><span>交易心得</span>
         </el-menu-item>
         <el-menu-item index="/liquidation">
           <el-icon><Warning /></el-icon><span>爆仓分析</span>
         </el-menu-item>
+        <el-menu-item index="/positions">
+          <el-icon><Clock /></el-icon><span>当前持仓</span>
+        </el-menu-item>
+        <el-menu-item index="/calendar">
+          <el-icon><Calendar /></el-icon><span>交易日历</span>
+        </el-menu-item>
         <el-menu-item index="/market">
           <el-icon><Coin /></el-icon><span>主力大户</span>
         </el-menu-item>
-        <el-menu-item index="/review">
-          <el-icon><EditPen /></el-icon><span>交易复盘</span>
+        <el-menu-item index="/liquidation-maps">
+          <el-icon><Histogram /></el-icon><span>清算热图</span>
         </el-menu-item>
       </el-menu>
 
@@ -68,9 +71,10 @@
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { syncOrders } from '@/api'
-import { useTheme } from '@/composables/useTheme'
+import { useThemeState } from '@/composables/useThemeState'
 
-const { isDark, toggle } = useTheme()
+const { isDark, toggleTheme } = useThemeState()
+const toggle = toggleTheme
 
 const syncing = ref(false)
 const syncResult = ref(null)
@@ -88,29 +92,39 @@ async function doSync() {
 
 <style>
 :root {
-  --bg-main: #0d1117;
-  --bg-card: #161b22;
-  --bg-hover: #1c2128;
-  --bg-active: #1f2937;
-  --bg-input: #0d1117;
-  --border-color: #21262d;
-  --text-primary: #c9d1d9;
-  --text-secondary: #8b949e;
-  --text-dim: #6e7681;
-  --text-heading: #f0f6fc;
+  --bg-main: #090d12;
+  --bg-card: #111821;
+  --bg-hover: #172231;
+  --bg-active: rgba(88, 166, 255, .13);
+  --bg-input: #0c1219;
+  --border-color: rgba(148, 163, 184, .16);
+  --text-primary: #d7dee8;
+  --text-secondary: #98a6b8;
+  --text-dim: #66758a;
+  --text-heading: #f6f9ff;
+  --accent-blue: #58a6ff;
+  --accent-green: #3fb950;
+  --accent-red: #f85149;
+  --accent-amber: #d29922;
+  --shadow-card: 0 18px 50px rgba(0, 0, 0, .26);
+  --el-color-primary: #58a6ff;
+  --el-color-success: #3fb950;
+  --el-color-danger: #f85149;
+  --el-color-warning: #d29922;
 }
 
 html:not(.dark) {
-  --bg-main: #f5f7fa;
-  --bg-card: #ffffff;
-  --bg-hover: #f3f4f6;
-  --bg-active: #dbeafe;
-  --bg-input: #f8f9fa;
-  --border-color: #d0d7de;
-  --text-primary: #24292f;
-  --text-secondary: #57606a;
-  --text-dim: #6b7280;
-  --text-heading: #24292f;
+  --bg-main: #eef3f8;
+  --bg-card: rgba(255, 255, 255, .92);
+  --bg-hover: #edf4ff;
+  --bg-active: rgba(9, 105, 218, .10);
+  --bg-input: #f8fafc;
+  --border-color: rgba(100, 116, 139, .18);
+  --text-primary: #1f2937;
+  --text-secondary: #566274;
+  --text-dim: #7b8798;
+  --text-heading: #111827;
+  --shadow-card: 0 18px 44px rgba(30, 41, 59, .10);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -125,7 +139,9 @@ body {
 .app-layout { height: 100vh; overflow: hidden; }
 
 .sidebar {
-  background: var(--bg-main);
+  background:
+    linear-gradient(180deg, rgba(88, 166, 255, .06), transparent 220px),
+    var(--bg-main);
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
@@ -134,7 +150,7 @@ body {
 }
 
 .logo {
-  padding: 20px 16px;
+  padding: 22px 16px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -147,8 +163,8 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
-  background: #58a6ff;
+  border-radius: 7px;
+  background: linear-gradient(135deg, #58a6ff, #3fb950);
   color: #fff;
   font-size: 11px;
   font-weight: 700;
@@ -157,12 +173,20 @@ body {
 .logo-text { font-size: 16px; font-weight: 700; color: var(--text-heading); }
 
 .sidebar-menu { border-right: none; flex: 1; }
-.sidebar-menu .el-menu-item { border-radius: 6px; margin: 2px 8px; }
-.sidebar-menu .el-menu-item.is-active { background: var(--bg-active) !important; }
+.sidebar-menu .el-menu-item {
+  border-radius: 8px;
+  margin: 3px 8px;
+  transition: background .18s ease, color .18s ease, transform .18s ease;
+}
+.sidebar-menu .el-menu-item:hover { transform: translateX(2px); }
+.sidebar-menu .el-menu-item.is-active {
+  background: var(--bg-active) !important;
+  box-shadow: inset 2px 0 0 var(--accent-blue);
+}
 
 .sync-area { padding: 16px; border-top: 1px solid var(--border-color); }
 .sync-btn { width: 100%; }
-.sync-result { text-align: center; margin-top: 8px; font-size: 12px; color: #3fb950; }
+.sync-result { text-align: center; margin-top: 8px; font-size: 12px; color: var(--accent-green); }
 
 .theme-toggle {
   display: flex;
@@ -181,7 +205,10 @@ body {
 .theme-label { font-size: 13px; color: var(--text-secondary); }
 
 .main-content {
-  background: var(--bg-main);
+  background:
+    radial-gradient(circle at 18% 8%, rgba(88, 166, 255, .075), transparent 28%),
+    linear-gradient(180deg, rgba(63, 185, 80, .035), transparent 260px),
+    var(--bg-main);
   overflow-y: auto;
   padding: 24px;
   transition: background .2s;
@@ -192,8 +219,11 @@ body {
   border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 20px;
-  transition: background .2s, border-color .2s;
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(14px);
+  transition: transform .18s ease, background .2s, border-color .2s, box-shadow .2s;
 }
+.stat-card:hover { transform: translateY(-2px); border-color: rgba(88, 166, 255, .28); }
 
 .chart-card {
   background: var(--bg-card);
@@ -201,8 +231,11 @@ body {
   border-radius: 8px;
   padding: 20px;
   margin-bottom: 16px;
-  transition: background .2s, border-color .2s;
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(14px);
+  transition: transform .18s ease, background .2s, border-color .2s, box-shadow .2s;
 }
+.chart-card:hover { border-color: rgba(88, 166, 255, .22); }
 
 .card-title {
   font-size: 14px;
@@ -214,10 +247,11 @@ body {
 }
 
 .page-title {
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 24px;
+  font-weight: 800;
   color: var(--text-heading);
   margin-bottom: 24px;
+  letter-spacing: 0;
 }
 
 .text-muted { color: var(--text-secondary) !important; }
@@ -247,4 +281,25 @@ html:not(.dark) .el-input__wrapper,
 html:not(.dark) .el-select .el-input__wrapper {
   background: var(--bg-input) !important;
 }
+
+.el-button {
+  transition: transform .16s ease, box-shadow .16s ease, background .16s ease;
+}
+.el-button:hover { transform: translateY(-1px); }
+.el-button--primary {
+  background: linear-gradient(135deg, #58a6ff, #3fb950) !important;
+  border-color: transparent !important;
+  box-shadow: 0 10px 24px rgba(88, 166, 255, .20);
+}
+.el-tabs__item { letter-spacing: 0; }
+.el-table {
+  --el-table-border-color: var(--border-color);
+  --el-table-header-bg-color: var(--bg-card);
+  --el-table-row-hover-bg-color: var(--bg-hover);
+}
+@keyframes pageFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.main-content > * { animation: pageFadeIn .32s ease both; }
 </style>

@@ -1,0 +1,98 @@
+databaseChangeLog:
+  - changeSet:
+      id: "007-crypto-trading-insight"
+      author: okx-analyzer
+      comment: "Create crypto_trading_insight table"
+      changes:
+        - createTable:
+            tableName: crypto_trading_insight
+            remarks: "Daily public crypto trading insights"
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: content_hash
+                  type: varchar(96)
+                  remarks: "Deduplication hash generated from title and link"
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: title
+                  type: varchar(512)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source_name
+                  type: varchar(80)
+              - column:
+                  name: source_url
+                  type: varchar(512)
+              - column:
+                  name: original_url
+                  type: varchar(1024)
+              - column:
+                  name: category
+                  type: varchar(64)
+              - column:
+                  name: insight_type
+                  type: varchar(32)
+              - column:
+                  name: summary
+                  type: text
+              - column:
+                  name: taboo
+                  type: text
+              - column:
+                  name: should_do
+                  type: text
+              - column:
+                  name: success_factor
+                  type: varchar(80)
+              - column:
+                  name: market_phase
+                  type: varchar(64)
+              - column:
+                  name: tags
+                  type: text
+              - column:
+                  name: heat_score
+                  type: numeric(10,2)
+              - column:
+                  name: confidence_score
+                  type: numeric(10,2)
+              - column:
+                  name: published_at
+                  type: timestamp
+              - column:
+                  name: collected_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+
+        - createIndex:
+            tableName: crypto_trading_insight
+            indexName: idx_crypto_insight_collected_at
+            columns:
+              - column:
+                  name: collected_at
+        - createIndex:
+            tableName: crypto_trading_insight
+            indexName: idx_crypto_insight_heat
+            columns:
+              - column:
+                  name: heat_score
+        - createIndex:
+            tableName: crypto_trading_insight
+            indexName: idx_crypto_insight_category
+            columns:
+              - column:
+                  name: category

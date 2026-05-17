@@ -3,6 +3,16 @@
     <div class="page-title">🔬 深度分析</div>
 
     <el-row :gutter="12" style="margin-bottom:16px">
+      <el-col :span="6" v-for="c in winRateCards" :key="c.label">
+        <div class="stat-card focus-stat" style="text-align:center">
+          <div class="stat-label">{{ c.label }}</div>
+          <div class="stat-value" :style="{color:c.color}">{{ c.value }}</div>
+          <div class="stat-sub">{{ c.sub }}</div>
+        </div>
+      </el-col>
+    </el-row>
+
+    <el-row :gutter="12" style="margin-bottom:16px">
       <el-col :span="6" v-for="c in advancedCards" :key="c.label">
         <div class="stat-card" style="text-align:center">
           <div class="stat-label">{{ c.label }}</div>
@@ -30,24 +40,33 @@
       </el-col>
     </el-row>
 
-    <el-row :gutter="16">
-      <el-col :span="12"><div class="chart-card"><div class="card-title">📈 多空胜率对比</div><div ref="directionRef" style="height:220px" /></div></el-col>
-      <el-col :span="12"><div class="chart-card"><div class="card-title">⏱ 赢单 vs 输单持仓时长</div><div ref="holdingCompRef" style="height:220px" /></div></el-col>
-    </el-row>
-    <div class="chart-card"><div class="card-title">📊 滚动20单胜率趋势</div><div ref="rollingRef" style="height:220px" /></div>
-    <div class="chart-card"><div class="card-title">🗓 月度交易统计（盈亏 + 胜率）</div><div ref="monthlyRef" style="height:280px" /></div>
-    <div class="chart-card"><div class="card-title">🔥 开单时段热力图（星期 × 小时）</div><div ref="heatmapRef" style="height:240px" /></div>
-    <el-row :gutter="16">
-      <el-col :span="14"><div class="chart-card"><div class="card-title">🕐 各小时胜率 & 交易量</div><div ref="hourlyRef" style="height:260px" /></div></el-col>
-      <el-col :span="10"><div class="chart-card"><div class="card-title">💹 各小时总盈亏</div><div ref="hourlyPnlRef" style="height:260px" /></div></el-col>
-    </el-row>
-    <el-row :gutter="16">
-      <el-col :span="12"><div class="chart-card"><div class="card-title">📆 星期胜率分布</div><div ref="weekdayRef" style="height:260px" /></div></el-col>
-      <el-col :span="12"><div class="chart-card"><div class="card-title">💵 星期总盈亏</div><div ref="weekdayPnlRef" style="height:260px" /></div></el-col>
+    <el-row :gutter="12">
+      <el-col :span="12"><div class="chart-card"><div class="card-title">📈 多空胜率对比</div><div ref="directionRef" style="height:200px" /></div></el-col>
+      <el-col :span="12"><div class="chart-card"><div class="card-title">⏱ 赢单 vs 输单持仓时长</div><div ref="holdingCompRef" style="height:200px" /></div></el-col>
     </el-row>
     <div class="chart-card">
-      <div class="card-title">📋 扛单与止盈诊断</div>
-      <el-table :data="holdingDiagnostics" style="width:100%" size="small">
+      <div class="card-title">📊 滚动20单胜率趋势</div>
+      <div ref="rollingRef" style="height:210px" />
+    </div>
+    <div class="chart-card">
+      <div class="card-title">🗓 月度交易统计（盈亏 / 胜率 / 均盈亏 / 笔数）</div>
+      <div ref="monthlyRef" style="height:260px" />
+    </div>
+    <div class="chart-card compact-analysis-chart">
+      <div class="card-title">⏱ 开单时段分布（星期 × 小时）</div>
+      <div ref="heatmapRef" style="height:240px" />
+    </div>
+    <el-row :gutter="12">
+      <el-col :span="14"><div class="chart-card"><div class="card-title">🕐 各小时胜率 & 交易量</div><div ref="hourlyRef" style="height:230px" /></div></el-col>
+      <el-col :span="10"><div class="chart-card"><div class="card-title">💹 各小时总盈亏</div><div ref="hourlyPnlRef" style="height:230px" /></div></el-col>
+    </el-row>
+    <el-row :gutter="12">
+      <el-col :span="12"><div class="chart-card"><div class="card-title">📆 星期胜率分布</div><div ref="weekdayRef" style="height:230px" /></div></el-col>
+      <el-col :span="12"><div class="chart-card"><div class="card-title">💵 星期总盈亏</div><div ref="weekdayPnlRef" style="height:230px" /></div></el-col>
+    </el-row>
+    <div class="chart-card compact-analysis-chart">
+      <div class="card-title">📋 交易质量诊断（扛单 / 止盈 / 风险）</div>
+      <el-table :data="combinedDiagnostics" style="width:100%" size="small">
         <el-table-column prop="metric" label="指标" min-width="150" />
         <el-table-column prop="value" label="当前值" min-width="140" />
         <el-table-column prop="judge" label="判断" min-width="140">
@@ -58,30 +77,23 @@
         <el-table-column prop="note" label="说明" min-width="280" />
       </el-table>
     </div>
-    <el-row :gutter="16">
-      <el-col :span="12"><div class="chart-card"><div class="card-title">⏱ 持仓时间分布</div><div ref="holdingRef" style="height:260px" /></div></el-col>
-      <el-col :span="12"><div class="chart-card"><div class="card-title">💰 盈亏金额分布</div><div ref="pnlDistRef" style="height:260px" /></div></el-col>
+    <el-row :gutter="12">
+      <el-col :span="12"><div class="chart-card"><div class="card-title">⏱ 持仓时间分布</div><div ref="holdingRef" style="height:230px" /></div></el-col>
+      <el-col :span="12"><div class="chart-card"><div class="card-title">💰 盈亏金额分布</div><div ref="pnlDistRef" style="height:230px" /></div></el-col>
     </el-row>
-    <div class="chart-card"><div class="card-title">📉 资金曲线 & 最大回撤分析（双面板）</div><div ref="drawdownRef" style="height:380px" /></div>
-    <el-row :gutter="16">
-      <el-col :span="10"><div class="chart-card"><div class="card-title">⚙️ 杠杆胜率精细分析</div><div ref="leverageRef" style="height:280px" /></div></el-col>
+    <div class="chart-card">
+      <div class="card-title">📉 资金曲线 & 最大回撤分析（双面板）</div>
+      <div ref="drawdownRef" style="height:380px" />
+    </div>
+    <el-row :gutter="12">
+      <el-col :span="10"><div class="chart-card"><div class="card-title">⚙️ 杠杆胜率精细分析</div><div ref="leverageRef" style="height:250px" /></div></el-col>
       <el-col :span="14">
         <div class="chart-card">
-          <div class="card-title">📋 交易质量诊断</div>
-          <el-table :data="qualityDiagnostics" style="width:100%" size="small">
-            <el-table-column prop="metric" label="指标" min-width="150" />
-            <el-table-column prop="value" label="当前值" min-width="120" />
-            <el-table-column prop="judge" label="判断" min-width="120">
-              <template #default="{ row }">
-                <span :style="{ color: row.color }">{{ row.judge }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="note" label="说明" min-width="250" />
-          </el-table>
+          <div class="card-title">🎯 盈亏效率象限</div>
+          <div ref="efficiencyRef" style="height:250px" />
         </div>
       </el-col>
     </el-row>
-    <div class="chart-card"><div class="card-title">📊 月度每单均盈亏 & 交易笔数趋势</div><div ref="monthlyDetailRef" style="height:260px" /></div>
   </div>
 </template>
 
@@ -100,9 +112,24 @@ const weekdayRef    = ref(null); const weekdayPnlRef= ref(null)
 const holdingRef    = ref(null); const holdingCompRef= ref(null); const pnlDistRef    = ref(null)
 const rollingRef    = ref(null); const monthlyRef   = ref(null); const directionRef  = ref(null)
 const drawdownRef   = ref(null); const leverageRef  = ref(null)
-const monthlyDetailRef = ref(null)
+const efficiencyRef = ref(null)
 
 let charts = {}
+
+const winRateCards = computed(() => {
+  const d = data.value
+  const total = Number(d.totalTrades || 0)
+  const winRate = Number(d.winRate || 0) * 100
+  const longRate = Number(d.longWinRate || 0) * 100
+  const shortRate = Number(d.shortWinRate || 0) * 100
+  const pf = Number(d.profitFactor || 0)
+  return [
+    { label: '综合胜率', value: `${winRate.toFixed(1)}%`, color: winRate >= 50 ? '#3fb950' : '#f85149', sub: `赢 ${d.winCount || 0} / 亏 ${d.lossCount || 0} / 总 ${total}` },
+    { label: '做多胜率', value: `${longRate.toFixed(1)}%`, color: longRate >= 50 ? '#3fb950' : '#d29922', sub: '多头平仓单胜率' },
+    { label: '做空胜率', value: `${shortRate.toFixed(1)}%`, color: shortRate >= 50 ? '#3fb950' : '#d29922', sub: '空头平仓单胜率' },
+    { label: '盈亏因子', value: pf ? pf.toFixed(2) : '-', color: pf >= 1.5 ? '#3fb950' : pf >= 1 ? '#d29922' : '#f85149', sub: '总盈利 / 总亏损' },
+  ]
+})
 
 const advancedCards = computed(() => {
   const d = data.value
@@ -212,6 +239,11 @@ const qualityDiagnostics = computed(() => {
   ]
 })
 
+const combinedDiagnostics = computed(() => [
+  ...holdingDiagnostics.value.map(i => ({ ...i, metric: `持仓｜${i.metric}` })),
+  ...qualityDiagnostics.value.map(i => ({ ...i, metric: `质量｜${i.metric}` })),
+])
+
 function fmt(v) { return v != null ? (+v).toFixed(2) : '-' }
 function fmtHolding(min) {
   if (min == null) return '暂无'
@@ -235,7 +267,7 @@ function renderAll() {
   renderDirection(); renderHoldingComp(); renderRolling(); renderMonthly()
   renderHeatmap(); renderHourly(); renderHourlyPnl(); renderWeekday()
   renderWeekdayPnl(); renderHolding(); renderPnlDist()
-  renderDrawdown(); renderLeverage(); renderMonthlyDetail()
+  renderDrawdown(); renderLeverage(); renderEfficiency()
 }
 
 function renderDirection() {
@@ -307,21 +339,39 @@ function renderMonthly() {
   const ms = data.value.monthlyStats || []
   const months   = ms.map(m => m.month)
   const pnls     = ms.map(m => m.totalPnl)
-  const winRates = ms.map(m => (m.winRate * 100).toFixed(1))
+  const winRates = ms.map(m => +(m.winRate * 100).toFixed(1))
+  const avgPnl = ms.map(m => m.trades > 0 ? +(m.totalPnl / m.trades).toFixed(2) : 0)
+  const trades = ms.map(m => m.trades)
+  const quality = ms.map((m, i) => {
+    const pnlScore = pnls[i] >= 0 ? 30 : -20
+    const winScore = (winRates[i] - 50) * .9
+    const sampleScore = Math.min(20, trades[i] * 1.8)
+    return +(50 + pnlScore + winScore + sampleScore).toFixed(1)
+  }).map(v => clamp(v, 0, 100))
   c.setOption({
-    tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'cross' },
+      formatter: items => {
+        const idx = items[0]?.dataIndex ?? 0
+        return `${months[idx]}<br/>盈亏: ${pnls[idx]} U<br/>胜率: ${winRates[idx]}%<br/>均盈亏: ${avgPnl[idx]} U<br/>笔数: ${trades[idx]}<br/>月度质量: ${quality[idx]}`
+      },
+    },
     legend: { top: 0, textStyle: { color: cs.value.legendColor } },
-    grid: { left: 60, right: 60, top: 40, bottom: 60 },
+    grid: { left: 60, right: 64, top: 40, bottom: 52 },
     xAxis: { type: 'category', data: months, axisLabel: { rotate: 30, fontSize: 10 } },
     yAxis: [
       { type: 'value', name: '盈亏(U)', axisLabel: { formatter: v => v + 'U' } },
-      { type: 'value', name: '胜率',   max: 100, axisLabel: { formatter: v => v + '%' } }
+      { type: 'value', name: '胜率/笔数/质量', max: value => Math.max(100, value.max), axisLabel: { formatter: v => v } }
     ],
     series: [
       { name: '月度盈亏', type: 'bar', data: pnls, barMaxWidth: 40,
         itemStyle: { color: p => pnls[p.dataIndex] >= 0 ? '#3fb950' : '#f85149', borderRadius: [4,4,0,0] } },
       { name: '月度胜率', type: 'line', yAxisIndex: 1, data: winRates, smooth: true,
         symbol: 'circle', symbolSize: 6, lineStyle: { color: '#f0883e' }, itemStyle: { color: '#f0883e' } },
+      { name: '每单均盈亏', type: 'line', data: avgPnl, smooth: true, symbol: 'none', lineStyle: { color: '#58a6ff', width: 2, type: 'dashed' } },
+      { name: '交易笔数', type: 'line', yAxisIndex: 1, data: trades, smooth: true, symbol: 'none', lineStyle: { color: '#a371f7', width: 1.8 } },
+      { name: '月度质量分', type: 'line', yAxisIndex: 1, data: quality, smooth: true, symbol: 'diamond', symbolSize: 7, lineStyle: { color: '#7ee787', width: 2.2 } },
     ]
   })
 }
@@ -329,18 +379,32 @@ function renderMonthly() {
 function renderHeatmap() {
   const c = ic('heatmap', heatmapRef)
   const d = data.value
-  const maxVal = Math.max(...(d.heatmapData || []).map(i => i[2]))
+  const dataRows = d.heatmapData || []
+  const hourTotals = Array.from({ length: 24 }, (_, hour) =>
+    dataRows.filter(i => i[0] === hour).reduce((sum, i) => sum + (i[2] || 0), 0)
+  )
+  const dayTotals = WEEKDAYS.map((_, day) =>
+    dataRows.filter(i => i[1] === day).reduce((sum, i) => sum + (i[2] || 0), 0)
+  )
   c.setOption({
-    tooltip: { formatter: p => `${WEEKDAYS[p.data[1]]} ${p.data[0]}:00<br/>交易 ${p.data[2]} 次` },
-    grid: { left: 60, right: 20, top: 10, bottom: 30 },
-    xAxis: { type: 'category', data: Array.from({length:24}, (_,i)=>i+'h'), axisLabel:{fontSize:10} },
-    yAxis: { type: 'category', data: WEEKDAYS },
-    visualMap: { min:0, max: maxVal||1, calculable: true, orient:'horizontal', left:'right', bottom:'-5px',
-                 inRange:{ color: cs.value.heatmap } },
-    series: [{ type: 'heatmap', data: d.heatmapData || [],
-      label: { show: false },
-      emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.5)' } }
-    }]
+    tooltip: { trigger: 'axis' },
+    legend: { top: 0, textStyle: { color: cs.value.legendColor } },
+    grid: [
+      { left: 56, right: 24, top: 34, height: 78 },
+      { left: 56, right: 24, top: 150, height: 54 },
+    ],
+    xAxis: [
+      { type: 'category', data: Array.from({ length: 24 }, (_, i) => `${i}h`), axisLabel: { fontSize: 10 } },
+      { type: 'category', gridIndex: 1, data: WEEKDAYS, axisLabel: { fontSize: 10 } },
+    ],
+    yAxis: [
+      { type: 'value', name: '小时', splitLine: { lineStyle: { color: cs.value.gridLine } } },
+      { type: 'value', gridIndex: 1, name: '星期', splitLine: { lineStyle: { color: cs.value.gridLine } } },
+    ],
+    series: [
+      { name: '小时开单数', type: 'bar', data: hourTotals, barMaxWidth: 10, itemStyle: { color: '#58a6ff', borderRadius: [3,3,0,0] } },
+      { name: '星期开单数', type: 'bar', xAxisIndex: 1, yAxisIndex: 1, data: dayTotals, barMaxWidth: 18, itemStyle: { color: '#d29922', borderRadius: [3,3,0,0] } },
+    ]
   })
 }
 
@@ -504,29 +568,37 @@ function renderLeverage() {
   })
 }
 
-function renderMonthlyDetail() {
-  const c = ic('monthlyDetail', monthlyDetailRef)
-  const ms     = data.value.monthlyStats || []
-  const months = ms.map(m => m.month)
-  const avgPnl = ms.map(m => m.trades > 0 ? +(m.totalPnl / m.trades).toFixed(2) : 0)
-  const trades = ms.map(m => m.trades)
+function renderEfficiency() {
+  const c = ic('efficiency', efficiencyRef)
+  const d = data.value
+  const labels = ['胜率', '盈亏因子', '期望值', '回撤控制', '止盈效率', '抗扛单']
+  const holdRatio = (d.avgLossHoldingMinutes || 0) / Math.max(d.avgWinHoldingMinutes || 1, 1)
+  const values = [
+    clamp((d.winRate || 0) * 100, 0, 100),
+    clamp((d.profitFactor || 0) / 2 * 100, 0, 100),
+    clamp(((d.expectedValue || 0) + 50) / 100 * 100, 0, 100),
+    clamp(100 - Math.abs(d.maxDrawdownPct || 0) * 2, 0, 100),
+    clamp((d.avgWin || 0) / Math.max(Math.abs(d.avgLoss || 1), 1) * 50, 0, 100),
+    clamp(100 - holdRatio * 22, 0, 100),
+  ]
   c.setOption({
-    tooltip: { trigger:'axis', axisPointer:{ type:'cross' } },
-    legend:  { top:0, textStyle:{ color: cs.value.legendColor } },
-    grid:    { left:72, right:60, top:35, bottom:60 },
-    xAxis:   { type:'category', data:months, axisLabel:{ rotate:30, fontSize:10 } },
-    yAxis:   [
-      { type:'value', name:'每单均盈亏(U)', axisLabel:{ formatter:v => v + 'U' } },
-      { type:'value', name:'交易笔数',      axisLabel:{ formatter:v => v + '笔' } }
-    ],
-    series: [
-      { name:'每单均盈亏', type:'bar', data:avgPnl, barMaxWidth:30,
-        itemStyle:{ color:p => avgPnl[p.dataIndex] >= 0 ? '#3fb950' : '#f85149', borderRadius:[4,4,0,0] } },
-      { name:'交易笔数', type:'line', yAxisIndex:1, data:trades, smooth:true,
-        symbol:'circle', symbolSize:6, lineStyle:{ color:'#58a6ff' }, itemStyle:{ color:'#58a6ff' } }
-    ]
+    tooltip: { trigger: 'item' },
+    radar: {
+      radius: '64%',
+      indicator: labels.map(name => ({ name, max: 100 })),
+      axisName: { color: cs.value.labelColor },
+      splitLine: { lineStyle: { color: cs.value.gridLine } },
+      axisLine: { lineStyle: { color: cs.value.gridLine } },
+      splitArea: { areaStyle: { color: ['transparent', 'rgba(88,166,255,.05)'] } },
+    },
+    series: [{
+      type: 'radar',
+      data: [{ name: '交易效率', value: values.map(v => +v.toFixed(1)), areaStyle: { color: 'rgba(88,166,255,.18)' }, lineStyle: { color: '#58a6ff', width: 2 } }]
+    }]
   })
 }
+
+function clamp(v, min, max) { return Math.max(min, Math.min(max, v)) }
 
 watch(isDark, async () => {
   Object.values(charts).forEach(c => c?.dispose())
@@ -542,7 +614,16 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); Object.value
 </script>
 
 <style scoped>
-.stat-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
-.stat-value { font-size: 26px; font-weight: 700; margin-bottom: 4px; }
+.chart-card { padding: 12px; margin-bottom: 10px; }
+.card-title { margin-bottom: 8px; }
+.compact-analysis-chart { padding: 12px; }
+.stat-card { padding: 12px; }
+.focus-stat {
+  background:
+    linear-gradient(180deg, rgba(88, 166, 255, .09), transparent 70%),
+    var(--bg-card);
+}
+.stat-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+.stat-value { font-size: 22px; font-weight: 700; margin-bottom: 3px; }
 .stat-sub   { font-size: 11px; color: var(--text-dim); }
 </style>
